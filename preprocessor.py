@@ -32,13 +32,13 @@ def main(args):
         
         if begin_date > end_date:
             print("Error: Beginning date is ahead of the end date.")
-            quit()
+            sys.exit()
         else:
             print("Begin Date:", begin_date)
             print("End Date:", end_date)
     except:
-        print("An error with input dates has occurred.")
-        quit()
+        print("An error with the input dates has occurred.")
+        sys.exit()
 	
 
 if __name__ == "__main__":
