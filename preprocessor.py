@@ -55,12 +55,24 @@ def create_daily(xlsx_file, date):
     # load package totals into a series and drop from dataframe
     df = df.drop(len(df)-1)
     
+    # if a provider is not in the dataframe, add it for completion
+    providers = np.array(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K'], dtype='str')
+    for p in providers:
+        if p  not in df['Provider'].values:
+            values = np.array([p, 0, 0, 0, 0])
+            df.loc[-1] = values
+            df.index = df.index + 1
+            df = df.sort_index()
+    
+    # sort dataframe by provider
+    df = df.sort_values('Provider')
+    
     # create an array for the date representing the column to be added to the dataframe
     array_date = np.full((len(df)), 0)
     array_date[0] = date_to_str(date)
     
     # insert column
-    df.insert(loc=0, column='Total Codes', value=array_date)
+    df.insert(loc=0, column='Date', value=array_date)
     
     return df
 
