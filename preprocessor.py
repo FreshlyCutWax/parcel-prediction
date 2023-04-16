@@ -15,6 +15,8 @@ from os import listdir
 from os.path import isfile, join
 
 
+
+
 def addfiles(path):
     # get some data filenames
     filenames = []
@@ -28,15 +30,41 @@ def addfiles(path):
     return filenames
 
 
-def parse_date(str_date):
+
+
+def str_to_date(str_date):
     # convert string date into date object
     date = datetime.date(int(str_date[0:4]), int(str_date[4:6]), int(str_date[6:8]))
     return date
+    
+    
+    
+    
+def date_to_str(date):
+    # convert date into a string
+    str_date = date.strftime('%Y%m%d')
+    return str_date
 
 
-def read_data(start_date, end_date):
-    # add some code here
-    pass
+
+
+def create_daily(xlsx_file, date):
+    # read Excel sheet
+    df = pd.read_excel(xlsx_file, 'Daily')
+    
+    # load package totals into a series and drop from dataframe
+    df = df.drop(len(df)-1)
+    
+    # create an array for the date representing the column to be added to the dataframe
+    array_date = np.full((len(df)), 0)
+    array_date[0] = date_to_str(date)
+    
+    # insert column
+    df.insert(loc=0, column='Total Codes', value=array_date)
+    
+    return df
+
+
 
 
 def main(args):
@@ -55,13 +83,19 @@ def main(args):
     dates = np.full(len(file_list), datetime.date(2000, 1, 1))
     try:
         for f in range(len(file_list)):
-            dates[f] = parse_date(file_list[f][13:21])
+            dates[f] = str_to_date(file_list[f][13:21])
             
         print("Start Date:", dates[0])
         print("End Date:", dates[len(dates)-1])
     except:
         print("An error with getting the dates has occurred.")
         sys.exit()
+        
+    # initialize dataframes
+    xlsx = pd.ExcelFile(file_list[0])
+    print(create_daily(xlsx, dates[0]))
+    
+    
 	
 
 if __name__ == "__main__":
