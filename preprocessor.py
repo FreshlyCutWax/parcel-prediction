@@ -9,10 +9,8 @@ import numpy as np
 import pandas as pd
 
 import sys
+import os
 import datetime
-
-from os import listdir
-from os.path import isfile, join
 
 
 
@@ -21,10 +19,10 @@ def addfiles(path):
     # get some data filenames
     filenames = []
     
-    for file in listdir(path):
-        name = join(path, file)
+    for file in os.listdir(path):
+        name = os.path.join(path, file)
         
-        if isfile(name):
+        if os.path.isfile(name):
             filenames.append(name)
             
     return filenames
@@ -84,11 +82,20 @@ def main(args):
     data_path = "data/"
     file_list = []
     
+    if len(args) > 1:
+        data_path = args[1]
+        
+    print("Data path:", "\'" + data_path + "\'")
+    
     # attempt to get the data file list
     try:
         file_list = addfiles(data_path)
     except:
-        print("An error with getting the filenames has occurred.")
+        if os.path.exists(data_path):
+            print("An error with getting the filenames has occurred.")
+        else:
+            os.makedirs(data_path)
+            print("No data to be found. Put your data into \'data/\'.")
         sys.exit()
         
     # attempt to get the range of dates from the files
