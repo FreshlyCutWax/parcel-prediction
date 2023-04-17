@@ -11,19 +11,30 @@ import pandas as pd
 import sys
 import os
 import datetime
+import pickle
 
 
 
 
-def addfiles(path):
-    # get some data filenames
+def get_data_filenames(path):
+    # list for holding filenames
     filenames = []
     
-    for file in os.listdir(path):
-        name = os.path.join(path, file)
-        
-        if os.path.isfile(name):
-            filenames.append(name)
+    # if the data path exists, try and get the filenames
+    if os.path.exists(path):
+        try:
+            for file in os.listdir(path):
+                name = os.path.join(path, file)
+                
+                if os.path.isfile(name):
+                    filenames.append(name)
+        except:
+            print("An error has occurred with getting the filenames.")        
+    else:
+        # if no path for the data, create default path and warn user
+        os.makedirs(path)
+        print("No directory for the data was found.") 
+        print("Default data directory \'data/\' has been created.")
             
     return filenames
 
@@ -91,14 +102,9 @@ def main(args):
     print("Data path:", "\'" + data_path + "\'")
     
     # attempt to get the data file list
-    try:
-        file_list = addfiles(data_path)
-    except:
-        if os.path.exists(data_path):
-            print("An error with getting the filenames has occurred.")
-        else:
-            os.makedirs(data_path)
-            print("No data to be found. Put your data into \'data/\'.")
+    file_list = get_data_filenames(data_path)
+    if not file_list:
+        print("No data was found. Preprocessing has ended.")
         sys.exit()
         
     # attempt to get the range of dates from the files
