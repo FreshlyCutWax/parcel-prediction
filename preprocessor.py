@@ -41,6 +41,24 @@ def get_data_filenames(path):
 
 
 
+def get_file_dates(filenames):
+    # create an empty array of dates
+    dates = []
+    
+    # try to obtain the dates from the filenames
+    try:
+        for f in filenames:
+            dates.append(str_to_date(f[13:21]))
+    except:
+        dates = []
+        print("An error with getting the dates has occurred.")
+        print("Proper filenames needed: PACKAGE_yyyymmdd")
+    
+    return dates
+
+
+
+
 def str_to_date(str_date):
     # convert string date into date object
     date = datetime.date(int(str_date[0:4]), int(str_date[4:6]), int(str_date[6:8]))
@@ -103,25 +121,27 @@ def main(args):
     
     # attempt to get the data file list
     file_list = get_data_filenames(data_path)
+ 
+ 
     if not file_list:
         print("No data was found. Preprocessing has ended.")
         sys.exit()
-        
+    
+    
     # attempt to get the range of dates from the files
-    dates = np.full(len(file_list), datetime.date(2000, 1, 1))
-    try:
-        for f in range(len(file_list)):
-            dates[f] = str_to_date(file_list[f][13:21])
-            
-        print("Start Date:", dates[0])
-        print("End Date:", dates[len(dates)-1])
-    except:
-        print("An error with getting the dates has occurred.")
+    date_list = get_file_dates(file_list)
+    
+    if not date_list:
+        print("There is no dates to display. Preprocessing has ended.")
         sys.exit()
+        
+    print("Start Date:", date_list[0])
+    print("End Date:", date_list[len(date_list)-1])
+    
         
     # initialize dataframes
     xlsx = pd.ExcelFile(file_list[0])
-    print(create_daily(xlsx, dates[0]))
+    print(create_daily(xlsx, date_list[0]))
     
     
 	
