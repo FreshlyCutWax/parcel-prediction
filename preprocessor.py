@@ -72,6 +72,9 @@ def create_daily(xlsx_file, date):
     # insert column
     df.insert(loc=0, column='Date', value=array_date)
     
+    # rename columns
+    df = df.rename(columns={"Counts" : "Pkg Counts", "Code 85" : "Missing", "All Codes" : "Pkg Returns"})
+    
     return df
 
 
