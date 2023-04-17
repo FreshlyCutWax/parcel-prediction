@@ -11,7 +11,6 @@ import pandas as pd
 import sys
 import os
 import datetime
-import pickle
 
 
 
@@ -41,20 +40,17 @@ def get_data_filenames(path):
 
 
 
-def get_file_dates(filenames):
-    # create an empty array of dates
-    dates = []
+def get_file_date(filename):
+    date = datetime.date(2000, 1, 1)
     
-    # try to obtain the dates from the filenames
+    # try to obtain the date from the filename
     try:
-        for f in filenames:
-            dates.append(str_to_date(f[13:21]))
+        date = str_to_date(filename[13:21])
     except:
-        dates = []
-        print("An error with getting the dates has occurred.")
-        print("Proper filenames needed: PACKAGE_yyyymmdd")
+        print("An error with getting the date for " + filename + " has occurred.")
+        print("Proper filename format needed: PACKAGE_yyyymmdd")
     
-    return dates
+    return date
 
 
 
@@ -89,20 +85,23 @@ def create_daily(xlsx_file, date):
             values = np.array([p, 0, 0, 0, 0])
             df.loc[-1] = values
             df.index = df.index + 1
-            df = df.sort_index()
+            
     
     # sort dataframe by provider
     df = df.sort_values('Provider')
     
     # create an array for the date representing the column to be added to the dataframe
-    array_date = np.full((len(df)), 0)
-    array_date[0] = date_to_str(date)
+    array_date = np.full((len(df)), date_to_str(date))
+    # array_date[0] = date_to_str(date)
     
     # insert column
     df.insert(loc=0, column='Date', value=array_date)
     
     # rename columns
     df = df.rename(columns={"Counts" : "Pkg Counts", "Code 85" : "Missing", "All Codes" : "Pkg Returns"})
+    
+    # sort the index
+    df = df.sort_index()
     
     return df
 
@@ -129,20 +128,26 @@ def main(args):
     
     
     # attempt to get the range of dates from the files
-    date_list = get_file_dates(file_list)
+    start_date = get_file_date(file_list[0])
+    end_date = get_file_date(file_list[len(file_list)-1])
+    print("Start Date:", start_date)
+    print("End Date:", end_date)
     
-    if not date_list:
-        print("There is no dates to display. Preprocessing has ended.")
-        sys.exit()
-        
-    print("Start Date:", date_list[0])
-    print("End Date:", date_list[len(date_list)-1])
-    
-        
+      
     # initialize dataframes
     xlsx = pd.ExcelFile(file_list[0])
-    df_daily = create_daily(xlsx, date_list[0])
+    df_daily = create_daily(xlsx, start_date)
+    
+    # build dataframes
+    for file in file_list[1:]:
+        xlsx = pd.ExcelFile(file)
+        xlsx_date = get_file_date(file)
+        
+        df_xlsx = create_daily(xlsx, xlsx_date)
+        df_daily = pd.concat([df_daily, df_xlsx])
+    
     df_daily.to_pickle('df_daily.pkl')
+    print(df_daily)
     
     
 	
