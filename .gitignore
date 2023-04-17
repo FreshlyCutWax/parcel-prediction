@@ -10,3 +10,6 @@ __pycache__/
 # ipython files
 *.ipynb_checkpoints
 *.ipynb
+
+# pickle files
+*.pkl

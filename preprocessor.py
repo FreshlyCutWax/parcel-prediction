@@ -141,7 +141,8 @@ def main(args):
         
     # initialize dataframes
     xlsx = pd.ExcelFile(file_list[0])
-    print(create_daily(xlsx, date_list[0]))
+    df_daily = create_daily(xlsx, date_list[0])
+    df_daily.to_pickle('df_daily.pkl')
     
     
 	
