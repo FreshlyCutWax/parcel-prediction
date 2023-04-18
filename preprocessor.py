@@ -111,6 +111,12 @@ def create_daily(xlsx_file, date):
 def create_package(xlsx_file):
     # read Excel sheet
     df = pd.read_excel(xlsx_file, 'SVC')
+    
+    # fix any missing 'Service' values
+    df['Service'] = df['Service'].fillna('S')
+    
+    # fix any missing 'Signature' values
+    df['Signature'] = df['Signature'].fillna('N')
     return df
     
     
@@ -168,9 +174,15 @@ def main(args):
             df_xlsx = create_package(xlsx)
             df_package = pd.concat([df_package, df_xlsx])
             
+    
+    # drop any duplicate package entries in 'package' and 'history' dataframes
+    df_package = df_package.drop_duplicates(subset=['Package ID'])
+    
     # reset the indices for each dataframe
     df_daily = df_daily.reset_index(drop=True)
     df_package = df_package.reset_index(drop=True)
+    
+
     
     df_daily.to_pickle('df_daily.pkl')
     df_package.to_pickle('df_package.pkl')
