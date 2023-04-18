@@ -108,8 +108,10 @@ def create_daily(xlsx_file, date):
 
 
 
-def create_package(xlsx_file, date):
-    pass
+def create_package(xlsx_file):
+    # read Excel sheet
+    df = pd.read_excel(xlsx_file, 'SVC')
+    return df
     
     
     
@@ -150,6 +152,7 @@ def main(args):
     xlsx = pd.ExcelFile(file_list[0])
     
     df_daily = create_daily(xlsx, start_date)
+    df_package = create_package(xlsx)
     
     # build dataframes
     if len(file_list) > 1:
@@ -157,12 +160,22 @@ def main(args):
             xlsx = pd.ExcelFile(file)
             xlsx_date = get_file_date(file)
             
+            # build daily
             df_xlsx = create_daily(xlsx, xlsx_date)
             df_daily = pd.concat([df_daily, df_xlsx])
-            df_daily = df_daily.reset_index(drop=True)
+            
+            # build package
+            df_xlsx = create_package(xlsx)
+            df_package = pd.concat([df_package, df_xlsx])
+            
+    # reset the indices for each dataframe
+    df_daily = df_daily.reset_index(drop=True)
+    df_package = df_package.reset_index(drop=True)
     
     df_daily.to_pickle('df_daily.pkl')
+    df_package.to_pickle('df_package.pkl')
     print(df_daily)
+    print(df_package)
     
     
 	
