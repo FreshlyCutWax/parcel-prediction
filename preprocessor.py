@@ -100,10 +100,22 @@ def create_daily(xlsx_file, date):
     # rename columns
     df = df.rename(columns={"Counts" : "Pkg Counts", "Code 85" : "Missing", "All Codes" : "Pkg Returns"})
     
-    # sort the index
-    df = df.sort_index()
+    # reset the index values from 0 to n-1
+    df = df.reset_index(drop=True)
     
     return df
+
+
+
+
+def create_package(xlsx_file, date):
+    pass
+    
+    
+    
+    
+def create_history(xlsx_file, date):
+    pass
 
 
 
@@ -136,15 +148,18 @@ def main(args):
       
     # initialize dataframes
     xlsx = pd.ExcelFile(file_list[0])
+    
     df_daily = create_daily(xlsx, start_date)
     
     # build dataframes
-    for file in file_list[1:]:
-        xlsx = pd.ExcelFile(file)
-        xlsx_date = get_file_date(file)
-        
-        df_xlsx = create_daily(xlsx, xlsx_date)
-        df_daily = pd.concat([df_daily, df_xlsx])
+    if len(file_list) > 1:
+        for file in file_list[1:]:
+            xlsx = pd.ExcelFile(file)
+            xlsx_date = get_file_date(file)
+            
+            df_xlsx = create_daily(xlsx, xlsx_date)
+            df_daily = pd.concat([df_daily, df_xlsx])
+            df_daily = df_daily.reset_index(drop=True)
     
     df_daily.to_pickle('df_daily.pkl')
     print(df_daily)
