@@ -14,6 +14,13 @@ import datetime
 
 
 
+#  Global Variables
+PATH = "data/"                      # Path to data
+FILES = []                          # File list
+START = datetime.date(2000, 1, 1)   # Start date in date range
+END = datetime.date(2000, 1, 1)     # End date in date range
+
+
 
 def get_data_filenames(path):
     # list for holding filenames
@@ -128,41 +135,20 @@ def create_history(xlsx_file, date):
 
 
 
-def main(args):
-    # default data path
-    data_path = "data/"
-    file_list = []
+def build_dataframes():
+    # reference global variables
+    global FILES
+    global START
     
-    if len(args) > 1:
-        data_path = args[1]
-        
-    print("Data path:", "\'" + data_path + "\'")
-    
-    # attempt to get the data file list
-    file_list = get_data_filenames(data_path)
- 
- 
-    if not file_list:
-        print("No data was found. Preprocessing has ended.")
-        sys.exit()
-    
-    
-    # attempt to get the range of dates from the files
-    start_date = get_file_date(file_list[0])
-    end_date = get_file_date(file_list[len(file_list)-1])
-    print("Start Date:", start_date)
-    print("End Date:", end_date)
-    
-      
     # initialize dataframes
-    xlsx = pd.ExcelFile(file_list[0])
+    xlsx = pd.ExcelFile(FILES[0])
     
-    df_daily = create_daily(xlsx, start_date)
+    df_daily = create_daily(xlsx, START)
     df_package = create_package(xlsx)
     
     # build dataframes
-    if len(file_list) > 1:
-        for file in file_list[1:]:
+    if len(FILES) > 1:
+        for file in FILES[1:]:
             xlsx = pd.ExcelFile(file)
             xlsx_date = get_file_date(file)
             
@@ -182,12 +168,45 @@ def main(args):
     df_daily = df_daily.reset_index(drop=True)
     df_package = df_package.reset_index(drop=True)
     
+    return df_daily, df_package
 
+
+
+
+def main(args):
+    # reference global variables
+    global PATH
+    global FILES
+    global START
+    global END
     
-    df_daily.to_pickle('df_daily.pkl')
-    df_package.to_pickle('df_package.pkl')
-    print(df_daily)
-    print(df_package)
+    # check if custom file path is given
+    if len(args) > 1:
+        PATH = args[1]
+        
+    print("Data path:", "\'" + PATH + "\'")
+    
+    # attempt to get the data file list
+    FILES = get_data_filenames(PATH)
+ 
+    # check to see if we got the data files we need
+    if not FILES:
+        print("No data was found. Preprocessing has ended.")
+        sys.exit()
+    
+    
+    # attempt to get the range of dates from the files
+    START = get_file_date(FILES[0])
+    END = get_file_date(FILES[len(FILES)-1])
+    print("Start Date:", START)
+    print("End Date:", END)
+
+    daily, package = build_dataframes()
+    
+    daily.to_pickle('df_daily.pkl')
+    package.to_pickle('df_package.pkl')
+    print(daily)
+    print(package)
     
     
 	
