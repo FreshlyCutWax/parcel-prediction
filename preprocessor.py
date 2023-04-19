@@ -129,8 +129,10 @@ def create_package(xlsx_file):
     
     
     
-def create_history(xlsx_file, date):
-    pass
+def create_history(xlsx_file):
+    df = pd.read_excel(xlsx_file, 'HIST')
+    
+    return df
 
 
 
@@ -140,11 +142,12 @@ def build_dataframes():
     global FILES
     global START
     
-    # initialize dataframes
+    # initialize dataframes, xlsx is Excel workbook
     xlsx = pd.ExcelFile(FILES[0])
     
     df_daily = create_daily(xlsx, START)
     df_package = create_package(xlsx)
+    df_hist = create_history(xlsx)
     
     # build dataframes
     if len(FILES) > 1:
@@ -152,23 +155,28 @@ def build_dataframes():
             xlsx = pd.ExcelFile(file)
             xlsx_date = get_file_date(file)
             
-            # build daily
+            # build daily dataframe
             df_xlsx = create_daily(xlsx, xlsx_date)
             df_daily = pd.concat([df_daily, df_xlsx])
             
-            # build package
+            # build package dataframe
             df_xlsx = create_package(xlsx)
             df_package = pd.concat([df_package, df_xlsx])
             
+            # build history dataframe
+            df_xlsx = create_history(xlsx)
+            df_hist = pd.concat([df_hist, df_xlsx])
     
     # drop any duplicate package entries in 'package' and 'history' dataframes
     df_package = df_package.drop_duplicates(subset=['Package ID'])
+    df_hist = df_hist.drop_duplicates()
     
     # reset the indices for each dataframe
     df_daily = df_daily.reset_index(drop=True)
     df_package = df_package.reset_index(drop=True)
+    df_hist = df_hist.reset_index(drop=True)
     
-    return df_daily, df_package
+    return df_daily, df_package, df_hist
 
 
 
@@ -201,12 +209,14 @@ def main(args):
     print("Start Date:", START)
     print("End Date:", END)
 
-    daily, package = build_dataframes()
+    daily, package, hist = build_dataframes()
     
     daily.to_pickle('df_daily.pkl')
     package.to_pickle('df_package.pkl')
+    hist.to_pickle('df_hist.pkl')
     print(daily)
     print(package)
+    print(hist)
     
     
 	
