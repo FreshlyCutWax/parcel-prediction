@@ -129,6 +129,23 @@ def create_package(xlsx_file):
     
     return df
 
+
+
+
+def create_pld(xlsx_file):
+    # read Excel sheet
+    df = pd.read_excel(xlsx_file, 'PLD')
+    
+    # drop Count and Time columns
+    df = df.drop(['Count', 'Time'], axis=1)
+    
+    # reorder columns and rename columns
+    column_order = ['Package ID', 'Zipcode', 'Provider', \
+                    'Assigned Area', 'Loaded Area', 'Station Code', \
+                    'Driver Code']
+    df = df.rename(columns={'Area' : 'Loaded Area'}).loc[:, column_order]
+    
+    return df
     
     
     
@@ -176,8 +193,8 @@ def create_history(xlsx_file):
     df = df.drop('Date_x', axis=1)
     
     # reorder and rename column names
-    order = ['Package ID', 'Type', 'Date', 'DoW', 'Station Code', 'Driver Code']
-    df = df.rename(columns={'Date_y' : 'Date'}).loc[:, order]
+    column_order = ['Package ID', 'Type', 'Date', 'DoW', 'Station Code', 'Driver Code']
+    df = df.rename(columns={'Date_y' : 'Date'}).loc[:, column_order]
     
     return df
 
@@ -195,25 +212,35 @@ def build_dataframes():
     df_daily = create_daily(xlsx, START)
     df_package = create_package(xlsx)
     df_hist = create_history(xlsx)
+    df_pld = create_pld(xlsx)
     
     # build dataframes
     print("Building dataframes...")
     if len(FILES) > 1:
         for file in tqdm(FILES[1:]):
-            xlsx = pd.ExcelFile(file)
-            xlsx_date = get_file_date(file)
-            
-            # build daily dataframe
-            df_xlsx = create_daily(xlsx, xlsx_date)
-            df_daily = pd.concat([df_daily, df_xlsx])
-            
-            # build package dataframe
-            df_xlsx = create_package(xlsx)
-            df_package = pd.concat([df_package, df_xlsx])
-            
-            # build history dataframe
-            df_xlsx = create_history(xlsx)
-            df_hist = pd.concat([df_hist, df_xlsx])
+            try:
+                xlsx = pd.ExcelFile(file)
+                xlsx_date = get_file_date(file)
+                
+                # build daily dataframe
+                df_xlsx = create_daily(xlsx, xlsx_date)
+                df_daily = pd.concat([df_daily, df_xlsx])
+                
+                # build package dataframe
+                df_xlsx = create_package(xlsx)
+                df_package = pd.concat([df_package, df_xlsx])
+                
+                # build history dataframe
+                df_xlsx = create_history(xlsx)
+                df_hist = pd.concat([df_hist, df_xlsx])
+                
+                # build PLD dataframe
+                df_xlsx = create_pld(xlsx)
+                df_pld = pd.concat([df_pld, df_xlsx])
+            except Exception as err:
+                print("\n")
+                print("Error with data file:", file)
+                print(type(err), ':', err)
     
     # drop any duplicate package entries in 'package' and 'history' dataframes
     df_package = df_package.drop_duplicates(subset=['Package ID'])
@@ -223,8 +250,9 @@ def build_dataframes():
     df_daily = df_daily.reset_index(drop=True)
     df_package = df_package.reset_index(drop=True)
     df_hist = df_hist.reset_index(drop=True)
+    df_pld = df_pld.reset_index(drop=True)
     
-    return df_daily, df_package, df_hist
+    return df_daily, df_package, df_hist, df_pld
 
 
 
@@ -264,14 +292,17 @@ def main(args):
     while True:
         process_inst = input("\n\nReady to preprocess data. Countinue? [Y/N]: ")
         if process_inst.upper() == "Y":
-            daily, package, hist = build_dataframes()
+            daily, package, hist, pld = build_dataframes()
             
             daily.to_pickle('df_daily.pkl')
             package.to_pickle('df_package.pkl')
             hist.to_pickle('df_hist.pkl')
-            print(daily)
-            print(package)
-            print(hist)
+            
+            print("DF Daily:\n", daily, end='\n')
+            print("DF Package:\n", package, end='\n')
+            print("DF History:\n", hist, end='\n')
+            print("DF PLD:\n", pld, end='\n')
+            
             sys.exit()
         elif process_inst.upper() == "N":
             print("Ending Preprocessing. Goodbye.")
