@@ -124,13 +124,58 @@ def create_package(xlsx_file):
     
     # fix any missing 'Signature' values
     df['Signature'] = df['Signature'].fillna('N')
-    return df
     
+    return df
+
     
     
     
 def create_history(xlsx_file):
     df = pd.read_excel(xlsx_file, 'HIST')
+    
+    # drop the time stamp
+    df = df.drop('Time', axis=1)
+    
+    # split the date and Day of Week
+    date_split = df['Date'].str.split('\xa0',n=1, expand=True)
+    date_split = date_split.rename(columns={0 : 'Date', 1 : 'DoW'})
+    
+    default_date = '99999999'
+    for i in range(len(date_split['Date'])):
+        # try to reformat the date
+        try:
+            old_date = date_split['Date'].iloc[i].split('/')
+            
+            # concat year
+            if old_date[2] == '99':
+                new_date = default_date
+            else:
+                new_date = '20' + old_date[2]
+                
+                # concat month
+                if len(old_date[0]) < 2:
+                    new_date = new_date + '0' + old_date[0]
+                else:
+                    new_date = new_date + old_date[0]
+                
+                # concat day
+                if len(old_date[1]) < 2:
+                    new_date = new_date + '0' + old_date[1]
+                else:
+                    new_date = new_date + old_date[1]
+        except:
+            # if error reformating date, set to default
+            new_date = default_date
+            
+        date_split['Date'].iloc[i] = new_date
+        
+    # merge the reformatted date and DoW back into original dataframe
+    df = df.merge(date_split, how='left', left_index=True, right_index=True)
+    df = df.drop('Date_x', axis=1)
+    
+    # reorder and rename column names
+    order = ['Package ID', 'Type', 'Date', 'DoW', 'Station Code', 'Driver Code']
+    df = df.rename(columns={'Date_y' : 'Date'}).loc[:, order]
     
     return df
 
