@@ -12,6 +12,8 @@ import sys
 import os
 import datetime
 
+from tqdm import tqdm
+
 
 
 #  Global Variables
@@ -196,7 +198,7 @@ def build_dataframes():
     
     # build dataframes
     if len(FILES) > 1:
-        for file in FILES[1:]:
+        for file in tqdm(FILES[1:]):
             xlsx = pd.ExcelFile(file)
             xlsx_date = get_file_date(file)
             
