@@ -197,6 +197,7 @@ def build_dataframes():
     df_hist = create_history(xlsx)
     
     # build dataframes
+    print("Building dataframes...")
     if len(FILES) > 1:
         for file in tqdm(FILES[1:]):
             xlsx = pd.ExcelFile(file)
@@ -235,6 +236,9 @@ def main(args):
     global START
     global END
     
+    # console space
+    print('\n\n')
+    
     # check if custom file path is given
     if len(args) > 1:
         PATH = args[1]
@@ -256,14 +260,24 @@ def main(args):
     print("Start Date:", START)
     print("End Date:", END)
 
-    daily, package, hist = build_dataframes()
-    
-    daily.to_pickle('df_daily.pkl')
-    package.to_pickle('df_package.pkl')
-    hist.to_pickle('df_hist.pkl')
-    print(daily)
-    print(package)
-    print(hist)
+    # start preprocessing data
+    while True:
+        process_inst = input("\n\nReady to preprocess data. Countinue? [Y/N]: ")
+        if process_inst.upper() == "Y":
+            daily, package, hist = build_dataframes()
+            
+            daily.to_pickle('df_daily.pkl')
+            package.to_pickle('df_package.pkl')
+            hist.to_pickle('df_hist.pkl')
+            print(daily)
+            print(package)
+            print(hist)
+            sys.exit()
+        elif process_inst.upper() == "N":
+            print("Ending Preprocessing. Goodbye.")
+            sys.exit()
+        else:
+            print("Invalid selection.")
     
     
 	
