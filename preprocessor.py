@@ -5,13 +5,17 @@ Description:
 Script for preprocessing and cleaning package data. Store
 the preprocessed data into a pickle file for mining operations.
 """
+
+# data libraries
 import numpy as np
 import pandas as pd
 
+# Python libraries
 import sys
 import os
 import datetime
 
+# other libraries
 from tqdm import tqdm
 
 
@@ -58,8 +62,10 @@ def capture_file_dates(filename):
     try:
         date = str_to_date(filename[13:21])
     except:
+        print("\n")
         print("An error with getting the date for " + filename + " has occurred.")
         print("Proper filename format needed: PACKAGE_yyyymmdd")
+        print("\n")
     
     return date
 # ---------------------------------------------- END FILE FUNCTIONS ----------------->
@@ -94,6 +100,7 @@ def make_dataframes_exception_message(df_name, file, error):
 
 
 # -------------------------------------------------- DATAFRAME FUNCTIONS ------------>
+
 def make_aggregate_dataframe(xlsx_file, date):
     # read Excel sheet
     df = pd.read_excel(xlsx_file, 'Daily')
@@ -120,7 +127,8 @@ def make_aggregate_dataframe(xlsx_file, date):
     df.insert(loc=0, column='Date', value=array_date)
     
     # rename columns
-    df = df.rename(columns={"Counts" : "Pkg Counts", "Code 85" : "Missing", "All Codes" : "Pkg Returns"})
+    df = df.rename(columns={"Areas" : "Area Counts", "Counts" : "Pkg Counts", \
+                            "Code 85" : "Missing", "All Codes" : "Pkg Returns"})
     
     # reset the index values from 0 to n-1
     df = df.reset_index(drop=True)
@@ -218,7 +226,8 @@ def make_history_dataframe(xlsx_file):
     # ------------------------- STATION CODES COMPLETE --------------------->
     
     
-    # ------------------------- SPLIT DRIVER CODES ------------------------->   
+    # ------------------------- SPLIT DRIVER CODES ------------------------->  
+    
     # replace weird escape sequence and split codes and subcodes
     driver_split = df['Driver Code'].str.replace('\xa0\xa0', ' ')
     driver_split = driver_split.str.split(' ', n=1, expand=True)
@@ -248,12 +257,16 @@ def make_history_dataframe(xlsx_file):
     column_order = ['Package ID', 'Type', 'Date', 'DoW', 'Station Code', 'Driver Code', 'Reason']
     df = df[column_order]
     
+    # ---------------------------- ADD PLD DATA ---------------------------->
+    
+    # ------------------------- PLD DATA COMPLETE -------------------------->
+    
     return df
 
 
 
 
-def create_pld(xlsx_file):
+def make_pld_dataframe(xlsx_file):
     # read Excel sheet
     df = pd.read_excel(xlsx_file, 'PLD')
     
@@ -267,26 +280,36 @@ def create_pld(xlsx_file):
     df = df.rename(columns={'Area' : 'Loaded Area'}).loc[:, column_order]
     
     return df
+# ---------------------------------------------- END DATAFRAME FUNCTIONS ------------>
 
 
 
 
-def make_dataframes():
+# -------------------------------------------------- BUILD DATA --------------------->
+def build_data():
     global FILES
     global START
     
-    # ---------------- make the aggregate dataframe ----------------
-    print("Making aggregate dataframes...")
+    # ------------------- initialize dataframes -------------------->
+    print("Initializing dataframes...")
     
     # load Excel Workbook
     xlsx = pd.ExcelFile(FILES[0])
     
-    # initialize
+    # initialize all dataframes
     df_aggregate = make_aggregate_dataframe(xlsx, START)
+    df_package = make_package_dataframe(xlsx)
+    df_history = make_history_dataframe(xlsx)
     
+    print("Dataframe initialization complete.")
+    # ------------------- initialization complete ------------------>
+    
+    
+    # ---------------- build the aggregate dataframe --------------->   
     # loop over the rest of the files and append aggregate data to the dataframe
     # only triggers when there is more than one file to read!!
     if len(FILES) > 1:
+        print("Building aggregate dataframe...")
         for file in tqdm(FILES[1:]):
             try:
                 # load Excel file and file date
@@ -300,22 +323,20 @@ def make_dataframes():
             except Exception as err:
                     df_name = 'df_aggregate'
                     make_dataframes_exception_message(df_name, file, err)
-                
-    # ----------------- aggregate dataframe complete ---------------
+    
+    # reset indices for the dataframe
+    df_aggregate = df_aggregate.reset_index(drop=True)
+    
+    # completion message
+    print("Aggregate dataframe complete.")
+    # ----------------- aggregate dataframe complete --------------->
     
     
-    # ----------------- make the package dataframe -----------------
-    print("Making package dataframes...")
-    
-    # load Excel Workbook
-    xlsx = pd.ExcelFile(FILES[0])
-    
-    # initialize
-    df_package = make_package_dataframe(xlsx)
-    
+    # ----------------- build the package dataframe ---------------->
     # loop over the rest of the files and append package data to the dataframe
     # only triggers when there is more than one file to read!!
     if len(FILES) > 1:
+        print("Building package dataframe...")
         for file in tqdm(FILES[1:]):
             try:
                 # load Excel file and file date
@@ -329,21 +350,23 @@ def make_dataframes():
             except Exception as err:
                     df_name = 'df_package'
                     make_dataframes_exception_message(df_name, file, err)
-    # ----------------- package dataframe complete -----------------
+                    
+    # drop any duplicate in the dataframe
+    df_package = df_package.drop_duplicates(subset=['Package ID'])
+    
+    # reset indices for the dataframe
+    df_package = df_package.reset_index(drop=True)
+    
+    # completion message
+    print("Package dataframe complete.")
+    # ----------------- package dataframe complete ----------------->
     
     
-    # ----------------- make the history dataframe -----------------
-    print("Making history dataframes...")
-    
-    # load Excel Workbook
-    xlsx = pd.ExcelFile(FILES[0])
-    
-    # initialize
-    df_history = make_history_dataframe(xlsx)
-    
+    # ----------------- build the history dataframe ---------------->   
     # loop over the rest of the files and append history data to the dataframe
     # only triggers when there is more than one file to read!!
     if len(FILES) > 1:
+        print("Building history dataframe...")
         for file in tqdm(FILES[1:]):
             try:
                 # load Excel file and file date
@@ -357,28 +380,19 @@ def make_dataframes():
             except Exception as err:
                     df_name = 'df_history'
                     make_dataframes_exception_message(df_name, file, err)
-    # ----------------- history dataframe complete -----------------
     
-    return df_aggregate, df_package, df_history
-# ---------------------------------------------- END DATAFRAME FUNCTIONS ------------>
-
-
-
-
-def build_data():
-    # make dataframes
-    df_aggregate, df_package, df_history = make_dataframes()
-    
-    # drop any duplicate package entries in 'package' and 'history' dataframes
-    df_package = df_package.drop_duplicates(subset=['Package ID'])
+    # drop any duplicate in the dataframe
     df_history = df_history.drop_duplicates()
     
-    # reset the indices for each dataframe
-    df_aggregate = df_aggregate.reset_index(drop=True)
-    df_package = df_package.reset_index(drop=True)
+    # reset indices for the dataframe
     df_history = df_history.reset_index(drop=True)
     
+    # completion message
+    print("History dataframe complete.")
+    # ----------------- history dataframe complete ----------------->
+    
     return df_aggregate, df_package, df_history
+# ---------------------------------------------- END BUILD DATA --------------------->
 
 
 
@@ -391,13 +405,13 @@ def main(args):
     global END
     
     # console space
-    print('\n\n')
+    print('\n')
     
     # check if custom file path is given
     if len(args) > 1:
         PATH = args[1]
         
-    print("Data path:", "\'" + PATH + "\'")
+    print("Data path:", "\'" + PATH + "\'", end="\n\n")
     
     # attempt to get the data file list
     FILES = capture_filenames(PATH)
