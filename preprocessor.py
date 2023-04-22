@@ -23,6 +23,7 @@ START = datetime.date(2000, 1, 1)   # Start date in date range
 END = datetime.date(2000, 1, 1)     # End date in date range
 
 
+# -------------------------------------------------- FILE FUNCTIONS ----------------->
 
 def capture_filenames(path):
     # list for holding filenames
@@ -61,16 +62,11 @@ def capture_file_dates(filename):
         print("Proper filename format needed: PACKAGE_yyyymmdd")
     
     return date
+# ---------------------------------------------- END FILE FUNCTIONS ----------------->
 
 
 
-
-def convert_date(date):
-    pass
-
-
-
-
+# -------------------------------------------------- HELPER FUNCTIONS --------------->
 def str_to_date(str_date):
     # convert string date into date object
     date = datetime.date(int(str_date[0:4]), int(str_date[4:6]), int(str_date[6:8]))
@@ -93,21 +89,22 @@ def make_dataframes_exception_message(df_name, file, error):
     print("Error from file:", file)
     print(type(error), ':', error)
     print("This data will be ignored!")
+# ---------------------------------------------- END HELPER FUNCTIONS --------------->
 
 
 
-
+# -------------------------------------------------- DATAFRAME FUNCTIONS ------------>
 def make_aggregate_dataframe(xlsx_file, date):
     # read Excel sheet
     df = pd.read_excel(xlsx_file, 'Daily')
     
-    # load package totals into a series and drop from dataframe
+    # drop total row from dataframe
     df = df.drop(len(df)-1)
     
     # if a provider is not in the dataframe, add it for completion
     providers = np.array(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K'], dtype='str')
     for p in providers:
-        if p  not in df['Provider'].values:
+        if p not in df['Provider'].values:
             values = np.array([p, 0, 0, 0, 0])
             df.loc[-1] = values
             df.index = df.index + 1
@@ -146,23 +143,6 @@ def make_package_dataframe(xlsx_file):
     
     return df
 
-
-
-
-def create_pld(xlsx_file):
-    # read Excel sheet
-    df = pd.read_excel(xlsx_file, 'PLD')
-    
-    # drop Count and Time columns
-    df = df.drop(['Count', 'Time'], axis=1)
-    
-    # reorder columns and rename columns
-    column_order = ['Package ID', 'Zipcode', 'Provider', \
-                    'Assigned Area', 'Loaded Area', 'Station Code', \
-                    'Driver Code']
-    df = df.rename(columns={'Area' : 'Loaded Area'}).loc[:, column_order]
-    
-    return df
     
     
     
@@ -212,6 +192,24 @@ def make_history_dataframe(xlsx_file):
     # reorder and rename column names
     column_order = ['Package ID', 'Type', 'Date', 'DoW', 'Station Code', 'Driver Code']
     df = df.rename(columns={'Date_y' : 'Date'}).loc[:, column_order]
+    
+    return df
+
+
+
+
+def create_pld(xlsx_file):
+    # read Excel sheet
+    df = pd.read_excel(xlsx_file, 'PLD')
+    
+    # drop Count and Time columns
+    df = df.drop(['Count', 'Time'], axis=1)
+    
+    # reorder columns and rename columns
+    column_order = ['Package ID', 'Zipcode', 'Provider', \
+                    'Assigned Area', 'Loaded Area', 'Station Code', \
+                    'Driver Code']
+    df = df.rename(columns={'Area' : 'Loaded Area'}).loc[:, column_order]
     
     return df
 
@@ -307,10 +305,11 @@ def make_dataframes():
     # ----------------- history dataframe complete -----------------
     
     return df_aggregate, df_package, df_history
+# ---------------------------------------------- END DATAFRAME FUNCTIONS ------------>
 
 
 
-# build data
+
 def build_data():
     # make dataframes
     df_aggregate, df_package, df_history = make_dataframes()
