@@ -24,7 +24,7 @@ END = datetime.date(2000, 1, 1)     # End date in date range
 
 
 
-def get_data_filenames(path):
+def capture_filenames(path):
     # list for holding filenames
     filenames = []
     
@@ -49,7 +49,8 @@ def get_data_filenames(path):
 
 
 
-def get_file_date(filename):
+def capture_file_dates(filename):
+    # set default date
     date = datetime.date(2000, 1, 1)
     
     # try to obtain the date from the filename
@@ -60,6 +61,12 @@ def get_file_date(filename):
         print("Proper filename format needed: PACKAGE_yyyymmdd")
     
     return date
+
+
+
+
+def convert_date(date):
+    pass
 
 
 
@@ -80,7 +87,17 @@ def date_to_str(date):
 
 
 
-def create_daily(xlsx_file, date):
+def make_dataframes_exception_message(df_name, file, error):
+    print("\n") 
+    print("Error while building data for:", df_name)
+    print("Error from file:", file)
+    print(type(error), ':', error)
+    print("This data will be ignored!")
+
+
+
+
+def make_aggregate_dataframe(xlsx_file, date):
     # read Excel sheet
     df = pd.read_excel(xlsx_file, 'Daily')
     
@@ -117,7 +134,7 @@ def create_daily(xlsx_file, date):
 
 
 
-def create_package(xlsx_file):
+def make_package_dataframe(xlsx_file):
     # read Excel sheet
     df = pd.read_excel(xlsx_file, 'SVC')
     
@@ -149,7 +166,7 @@ def create_pld(xlsx_file):
     
     
     
-def create_history(xlsx_file):
+def make_history_dataframe(xlsx_file):
     df = pd.read_excel(xlsx_file, 'HIST')
     
     # drop the time stamp
@@ -201,58 +218,113 @@ def create_history(xlsx_file):
 
 
 
-def build_dataframes():
-    # reference global variables
+def make_dataframes():
     global FILES
     global START
     
-    # initialize dataframes, xlsx is Excel workbook
+    # ---------------- make the aggregate dataframe ----------------
+    print("Making aggregate dataframes...")
+    
+    # load Excel Workbook
     xlsx = pd.ExcelFile(FILES[0])
     
-    df_daily = create_daily(xlsx, START)
-    df_package = create_package(xlsx)
-    df_hist = create_history(xlsx)
-    df_pld = create_pld(xlsx)
+    # initialize
+    df_aggregate = make_aggregate_dataframe(xlsx, START)
     
-    # build dataframes
-    print("Building dataframes...")
+    # loop over the rest of the files and append aggregate data to the dataframe
+    # only triggers when there is more than one file to read!!
     if len(FILES) > 1:
         for file in tqdm(FILES[1:]):
             try:
+                # load Excel file and file date
                 xlsx = pd.ExcelFile(file)
-                xlsx_date = get_file_date(file)
+                xlsx_date = capture_file_dates(file)
                 
-                # build daily dataframe
-                df_xlsx = create_daily(xlsx, xlsx_date)
-                df_daily = pd.concat([df_daily, df_xlsx])
+                # create dataframe from file and append to aggregate dataframe
+                df_xlsx = make_aggregate_dataframe(xlsx, xlsx_date)
+                df_aggregate = pd.concat([df_aggregate, df_xlsx])
                 
-                # build package dataframe
-                df_xlsx = create_package(xlsx)
-                df_package = pd.concat([df_package, df_xlsx])
-                
-                # build history dataframe
-                df_xlsx = create_history(xlsx)
-                df_hist = pd.concat([df_hist, df_xlsx])
-                
-                # build PLD dataframe
-                df_xlsx = create_pld(xlsx)
-                df_pld = pd.concat([df_pld, df_xlsx])
             except Exception as err:
-                print("\n")
-                print("Error with data file:", file)
-                print(type(err), ':', err)
+                    df_name = 'df_aggregate'
+                    make_dataframes_exception_message(df_name, file, err)
+                
+    # ----------------- aggregate dataframe complete ---------------
+    
+    
+    # ----------------- make the package dataframe -----------------
+    print("Making package dataframes...")
+    
+    # load Excel Workbook
+    xlsx = pd.ExcelFile(FILES[0])
+    
+    # initialize
+    df_package = make_package_dataframe(xlsx)
+    
+    # loop over the rest of the files and append package data to the dataframe
+    # only triggers when there is more than one file to read!!
+    if len(FILES) > 1:
+        for file in tqdm(FILES[1:]):
+            try:
+                # load Excel file and file date
+                xlsx = pd.ExcelFile(file)
+                xlsx_date = capture_file_dates(file)
+                
+                # create dataframe from file and append to package dataframe
+                df_xlsx = make_package_dataframe(xlsx)
+                df_package = pd.concat([df_package, df_xlsx])
+            
+            except Exception as err:
+                    df_name = 'df_package'
+                    make_dataframes_exception_message(df_name, file, err)
+    # ----------------- package dataframe complete -----------------
+    
+    
+    # ----------------- make the history dataframe -----------------
+    print("Making history dataframes...")
+    
+    # load Excel Workbook
+    xlsx = pd.ExcelFile(FILES[0])
+    
+    # initialize
+    df_history = make_history_dataframe(xlsx)
+    
+    # loop over the rest of the files and append history data to the dataframe
+    # only triggers when there is more than one file to read!!
+    if len(FILES) > 1:
+        for file in tqdm(FILES[1:]):
+            try:
+                # load Excel file and file date
+                xlsx = pd.ExcelFile(file)
+                xlsx_date = capture_file_dates(file)
+                
+                # create dataframe from file and append to history dataframe
+                df_xlsx = make_history_dataframe(xlsx)
+                df_history = pd.concat([df_history, df_xlsx])
+            
+            except Exception as err:
+                    df_name = 'df_history'
+                    make_dataframes_exception_message(df_name, file, err)
+    # ----------------- history dataframe complete -----------------
+    
+    return df_aggregate, df_package, df_history
+
+
+
+# build data
+def build_data():
+    # make dataframes
+    df_aggregate, df_package, df_history = make_dataframes()
     
     # drop any duplicate package entries in 'package' and 'history' dataframes
     df_package = df_package.drop_duplicates(subset=['Package ID'])
-    df_hist = df_hist.drop_duplicates()
+    df_history = df_history.drop_duplicates()
     
     # reset the indices for each dataframe
-    df_daily = df_daily.reset_index(drop=True)
+    df_aggregate = df_aggregate.reset_index(drop=True)
     df_package = df_package.reset_index(drop=True)
-    df_hist = df_hist.reset_index(drop=True)
-    df_pld = df_pld.reset_index(drop=True)
+    df_history = df_history.reset_index(drop=True)
     
-    return df_daily, df_package, df_hist, df_pld
+    return df_aggregate, df_package, df_history
 
 
 
@@ -274,7 +346,7 @@ def main(args):
     print("Data path:", "\'" + PATH + "\'")
     
     # attempt to get the data file list
-    FILES = get_data_filenames(PATH)
+    FILES = capture_filenames(PATH)
  
     # check to see if we got the data files we need
     if not FILES:
@@ -283,8 +355,8 @@ def main(args):
     
     
     # attempt to get the range of dates from the files
-    START = get_file_date(FILES[0])
-    END = get_file_date(FILES[len(FILES)-1])
+    START = capture_file_dates(FILES[0])
+    END = capture_file_dates(FILES[len(FILES)-1])
     print("Start Date:", START)
     print("End Date:", END)
 
@@ -292,16 +364,16 @@ def main(args):
     while True:
         process_inst = input("\n\nReady to preprocess data. Countinue? [Y/N]: ")
         if process_inst.upper() == "Y":
-            daily, package, hist, pld = build_dataframes()
+            df_aggregate, df_package, df_history = build_data()
             
-            daily.to_pickle('df_daily.pkl')
-            package.to_pickle('df_package.pkl')
-            hist.to_pickle('df_hist.pkl')
+            df_aggregate.to_pickle('df_aggregate.pkl')
+            df_package.to_pickle('df_package.pkl')
+            df_history.to_pickle('df_history.pkl')
             
-            print("DF Daily:\n", daily, end='\n')
-            print("DF Package:\n", package, end='\n')
-            print("DF History:\n", hist, end='\n')
-            print("DF PLD:\n", pld, end='\n')
+            print("Dataframe Aggregate:\n", df_aggregate, end='\n')
+            print("Dataframe Package:\n", df_package, end='\n')
+            print("Dataframe History:\n", df_history, end='\n')
+            # print("DF PLD:\n", pld, end='\n')
             
             sys.exit()
         elif process_inst.upper() == "N":
