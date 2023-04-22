@@ -115,9 +115,8 @@ def make_aggregate_dataframe(xlsx_file, date):
     
     # create an array for the date representing the column to be added to the dataframe
     array_date = np.full((len(df)), date_to_str(date))
-    # array_date[0] = date_to_str(date)
     
-    # insert column
+    # insert the date column column
     df.insert(loc=0, column='Date', value=array_date)
     
     # rename columns
@@ -184,14 +183,70 @@ def make_history_dataframe(xlsx_file):
             new_date = default_date
             
         date_split['Date'].iloc[i] = new_date
-        
+    
+    # drop the original date column
+    df = df.drop('Date', axis=1)
+    
     # merge the reformatted date and DoW back into original dataframe
     df = df.merge(date_split, how='left', left_index=True, right_index=True)
-    df = df.drop('Date_x', axis=1)
+    
+    # ------------------------- SPLIT STATION CODES ------------------------>   
+    # replace weird escape sequence and split codes and subcodes
+    station_split = df['Station Code'].str.replace('\xa0\xa0', ' ')
+    station_split = station_split.str.split(' ', n=1, expand=True)
+    
+    # drop un-needed Station Subcodes
+    station_split = station_split.drop(1, axis=1)
+    
+    # rename columns
+    station_split = station_split.rename(columns={0 : 'Station Code'})
+    
+    # replace empty code markers with zero
+    station_split.loc[station_split['Station Code'] == '---', 'Station Code'] = '0'
+    
+    # fill in missing/NaN values and cast as integer type
+    for i in station_split.columns:
+        station_split[i] = station_split[i].str.replace('[a-zA-Z]', '', regex=True)
+        station_split[i] = station_split[i] = station_split[i].fillna(0)
+        station_split[i] = station_split[i].astype('int')
+    
+    # drop the original Station Codes column
+    df = df.drop(('Station Code'), axis=1)
+    
+    # merge the codes back into the original dataframe
+    df = df.merge(station_split, how='left', left_index=True, right_index=True)
+    # ------------------------- STATION CODES COMPLETE --------------------->
+    
+    
+    # ------------------------- SPLIT DRIVER CODES ------------------------->   
+    # replace weird escape sequence and split codes and subcodes
+    driver_split = df['Driver Code'].str.replace('\xa0\xa0', ' ')
+    driver_split = driver_split.str.split(' ', n=1, expand=True)
+    
+    # rename columns
+    driver_split = driver_split.rename(columns={0 : 'Driver Code', 1 : 'Reason'})
+    
+    # replace empty code markers with zero
+    driver_split.loc[driver_split['Driver Code'] == '---', 'Driver Code'] = '0'
+    driver_split.loc[driver_split['Reason'] == '---', 'Reason'] = '0'
+    
+    
+    # fill in missing/NaN values and cast as integer type
+    for i in driver_split.columns:
+        driver_split[i] = driver_split[i].str.replace('[a-zA-Z]', '', regex=True)
+        driver_split[i] = driver_split[i] = driver_split[i].fillna(0)
+        driver_split[i] = driver_split[i].astype('int')
+     
+    # drop the original Station Codes column
+    df = df.drop(('Driver Code'), axis=1)
+     
+    # merge the codes back into the original dataframe
+    df = df.merge(driver_split, how='left', left_index=True, right_index=True)
+    # ------------------------- DRIVER CODES COMPLETE ---------------------->
     
     # reorder and rename column names
-    column_order = ['Package ID', 'Type', 'Date', 'DoW', 'Station Code', 'Driver Code']
-    df = df.rename(columns={'Date_y' : 'Date'}).loc[:, column_order]
+    column_order = ['Package ID', 'Type', 'Date', 'DoW', 'Station Code', 'Driver Code', 'Reason']
+    df = df[column_order]
     
     return df
 
