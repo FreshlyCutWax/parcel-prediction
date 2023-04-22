@@ -54,7 +54,7 @@ def capture_filenames(path):
 
 
 
-def capture_file_dates(filename):
+def capture_file_date(filename):
     # set default date
     date = datetime.date(2000, 1, 1)
     
@@ -227,7 +227,6 @@ def make_history_dataframe(xlsx_file):
     
     
     # ------------------------- SPLIT DRIVER CODES ------------------------->  
-    
     # replace weird escape sequence and split codes and subcodes
     driver_split = df['Driver Code'].str.replace('\xa0\xa0', ' ')
     driver_split = driver_split.str.split(' ', n=1, expand=True)
@@ -254,32 +253,50 @@ def make_history_dataframe(xlsx_file):
     # ------------------------- DRIVER CODES COMPLETE ---------------------->
     
     # reorder and rename column names
-    column_order = ['Package ID', 'Type', 'Date', 'DoW', 'Station Code', 'Driver Code', 'Reason']
+    column_order = ['Package ID', 'Date', 'DoW', 'Type', 'Station Code', 'Driver Code', 'Reason']
     df = df[column_order]
-    
-    # ---------------------------- ADD PLD DATA ---------------------------->
-    
-    # ------------------------- PLD DATA COMPLETE -------------------------->
     
     return df
 
 
 
 
-def make_pld_dataframe(xlsx_file):
+def make_pld_dataframe(xlsx_file, date):
     # read Excel sheet
     df = pd.read_excel(xlsx_file, 'PLD')
     
     # drop Count and Time columns
     df = df.drop(['Count', 'Time'], axis=1)
     
+    # create an array for the date representing the column to be added to the dataframe
+    array_date = np.full((len(df)), date_to_str(date))
+    
+    # insert the date column column
+    df.insert(loc=0, column='Date', value=array_date)
+    
     # reorder columns and rename columns
     column_order = ['Package ID', 'Zipcode', 'Provider', \
                     'Assigned Area', 'Loaded Area', 'Station Code', \
-                    'Driver Code']
+                    'Driver Code', 'Date']
     df = df.rename(columns={'Area' : 'Loaded Area'}).loc[:, column_order]
     
     return df
+    
+    
+    
+def history_merge_pld(df_history, df_pld):
+    history_idx = df[['Package ID', 'Date', 'Driver Code']]
+    
+    # loop over all packages in history
+    for i in range(len(history_idx)):
+        # when the Driver Code in any row is not 0...
+        if history_idx['Driver Code'].iloc[i] > 0:
+            # get the package ID and date from current row
+            pkg_id = history_idx['Package ID'].iloc[i]
+            pkg_date = history_idx['Date'].iloc[i]
+            
+            df_pkg = df_pld[['Package ID'] == pkg_id]
+    pass
 # ---------------------------------------------- END DATAFRAME FUNCTIONS ------------>
 
 
@@ -300,6 +317,7 @@ def build_data():
     df_aggregate = make_aggregate_dataframe(xlsx, START)
     df_package = make_package_dataframe(xlsx)
     df_history = make_history_dataframe(xlsx)
+    df_pld = make_pld_dataframe(xlsx, START)
     
     print("Dataframe initialization complete.")
     # ------------------- initialization complete ------------------>
@@ -314,7 +332,7 @@ def build_data():
             try:
                 # load Excel file and file date
                 xlsx = pd.ExcelFile(file)
-                xlsx_date = capture_file_dates(file)
+                xlsx_date = capture_file_date(file)
                 
                 # create dataframe from file and append to aggregate dataframe
                 df_xlsx = make_aggregate_dataframe(xlsx, xlsx_date)
@@ -341,7 +359,7 @@ def build_data():
             try:
                 # load Excel file and file date
                 xlsx = pd.ExcelFile(file)
-                xlsx_date = capture_file_dates(file)
+                # xlsx_date = capture_file_date(file)
                 
                 # create dataframe from file and append to package dataframe
                 df_xlsx = make_package_dataframe(xlsx)
@@ -371,7 +389,7 @@ def build_data():
             try:
                 # load Excel file and file date
                 xlsx = pd.ExcelFile(file)
-                xlsx_date = capture_file_dates(file)
+                # xlsx_date = capture_file_date(file)
                 
                 # create dataframe from file and append to history dataframe
                 df_xlsx = make_history_dataframe(xlsx)
@@ -391,7 +409,28 @@ def build_data():
     print("History dataframe complete.")
     # ----------------- history dataframe complete ----------------->
     
-    return df_aggregate, df_package, df_history
+    
+    # ----------------- build the PLD dataframe -------------------->
+    # loop over the rest of the files and append history data to the dataframe
+    # only triggers when there is more than one file to read!!
+    if len(FILES) > 1:
+        print("Building PLD dataframe...")
+        for file in tqdm(FILES[1:]):
+            try:
+                # load Excel file and file date
+                xlsx = pd.ExcelFile(file)
+                xlsx_date = capture_file_date(file)
+                
+                # create dataframe from file and append to history dataframe
+                df_xlsx = make_pld_dataframe(xlsx, xlsx_date)
+                df_pld = pd.concat([df_pld, df_xlsx])
+                
+            except Exception as err:
+                df_name = 'df_pld'
+                make_dataframes_exception_message(df_name, file, err)
+    # ----------------- PLD dataframe complete --------------------->
+    
+    return df_aggregate, df_package, df_history, df_pld
 # ---------------------------------------------- END BUILD DATA --------------------->
 
 
@@ -423,8 +462,8 @@ def main(args):
     
     
     # attempt to get the range of dates from the files
-    START = capture_file_dates(FILES[0])
-    END = capture_file_dates(FILES[len(FILES)-1])
+    START = capture_file_date(FILES[0])
+    END = capture_file_date(FILES[len(FILES)-1])
     print("Start Date:", START)
     print("End Date:", END)
 
@@ -432,7 +471,7 @@ def main(args):
     while True:
         process_inst = input("\n\nReady to preprocess data. Countinue? [Y/N]: ")
         if process_inst.upper() == "Y":
-            df_aggregate, df_package, df_history = build_data()
+            df_aggregate, df_package, df_history, df_pld = build_data()
             
             df_aggregate.to_pickle('df_aggregate.pkl')
             df_package.to_pickle('df_package.pkl')
@@ -441,7 +480,7 @@ def main(args):
             print("Dataframe Aggregate:\n", df_aggregate, end='\n')
             print("Dataframe Package:\n", df_package, end='\n')
             print("Dataframe History:\n", df_history, end='\n')
-            # print("DF PLD:\n", pld, end='\n')
+            print("Dataframe PLD:\n", df_pld, end='\n')
             
             sys.exit()
         elif process_inst.upper() == "N":
