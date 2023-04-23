@@ -90,11 +90,11 @@ def date_to_str(date):
 
 
 def make_dataframes_exception_message(df_name, file, error):
-    print("\n") 
+    print("\n\n") 
     print("Error while building data for:", df_name)
     print("Error from file:", file)
     print(type(error), ':', error)
-    print("This data will be ignored!")
+    print("This data will be ignored!", end='\n\n')
 # ---------------------------------------------- END HELPER FUNCTIONS --------------->
 
 
@@ -252,9 +252,31 @@ def make_history_dataframe(xlsx_file):
     df = df.merge(driver_split, how='left', left_index=True, right_index=True)
     # ------------------------- DRIVER CODES COMPLETE ---------------------->
     
+    
+    # ------------------------- HISTORY ENTRY ORDERING --------------------->
+    # add empty column for the order of events
+    array_order = np.full((len(df)), 0, dtype='int')
+    df.insert(loc=0, column='Order', value=array_order)
+    
+    # get unique package IDs
+    pkgs = pd.unique(df['Package ID'])
+    
+    # loop over individual package IDs and index history entries
+    for i in pkgs:
+        df_pkg = df[df['Package ID'] == i]
+        pkg_indexer = 1
+        for j in df_pkg.index:
+            df.at[j, 'Order'] = pkg_indexer
+            pkg_indexer += 1            
+    # ------------------------- HISTORY ENTRY ORDERING --------------------->
+    
     # reorder and rename column names
-    column_order = ['Package ID', 'Date', 'DoW', 'Type', 'Station Code', 'Driver Code', 'Reason']
+    column_order = ['Package ID', 'Order', 'Date', 'DoW', 'Type', 'Station Code', 'Driver Code', 'Reason']
     df = df[column_order]
+    
+    # cast column types
+    for i in df[['Package ID', 'Date', 'DoW', 'Type']].columns:
+        df[i] = df[i].astype('string')
     
     return df
 
@@ -280,22 +302,68 @@ def make_pld_dataframe(xlsx_file, date):
                     'Driver Code', 'Date']
     df = df.rename(columns={'Area' : 'Loaded Area'}).loc[:, column_order]
     
+    
+    # ---------------- FILL AND CAST VALUE TYPES ----------------------->
+    df['Package ID'] = df['Package ID'].astype('string')
+    
+    
+    df['Zipcode'] = df['Zipcode'].fillna(0)
+    df['Zipcode'] = df['Zipcode'].astype('int')
+    
+    
+    df['Provider'] = df['Provider'].fillna('None')
+    df['Provider'] = df['Provider'].astype('string')
+    
+    
+    df['Assigned Area'] = df['Assigned Area'].fillna(0)
+    df['Assigned Area'] = df['Assigned Area'].astype('int')
+    
+    
+    df['Loaded Area'] = df['Loaded Area'].fillna(0)
+    df['Loaded Area'] = df['Loaded Area'].astype('int')
+    
+    
+    df['Station Code'] = df['Station Code'].fillna(0)
+    df['Station Code'] = df['Station Code'].astype('int')
+    
+    
+    df['Driver Code'] = df['Driver Code'].fillna(0)
+    df['Driver Code'] = df['Driver Code'].astype('int')
+    
+    
+    df['Date'] = df['Date'].astype('string')
+    # ------------------- END FILL AND CAST ---------------------------->
+    
     return df
     
     
     
 def history_merge_pld(df_history, df_pld):
-    history_idx = df[['Package ID', 'Date', 'Driver Code']]
+    # all the unique package IDs from the history dataframe
+    history_idx = pd.unique(df_history['Package ID'])
     
-    # loop over all packages in history
-    for i in range(len(history_idx)):
-        # when the Driver Code in any row is not 0...
-        if history_idx['Driver Code'].iloc[i] > 0:
-            # get the package ID and date from current row
-            pkg_id = history_idx['Package ID'].iloc[i]
-            pkg_date = history_idx['Date'].iloc[i]
+    # initialize the new merged dataframe
+    column_names = np.append(df_history.columns, df_pld)
+    df = pd.DataFrame(df_history.columns) 
+    
+    # loop over all individual packages
+    for i in history_idx:
+        # make a dataframe for the package's history
+        df_pkg_hist = df_history[df_history['Package ID'] == i]
+        
+        # loop over all the rows in the package's history...
+        for r in range(len(df_pkg_hist)):
             
-            df_pkg = df_pld[['Package ID'] == pkg_id]
+            # when the Driver Code is not 0...
+            if df_pkg_hist['Driver Code'].iloc[r] > 0:
+                # get the date from current row
+                hist_date = df_pkg_hist['Date'].iloc[i]
+                
+                # get the row from PLD matching the current row
+                pld_row_data = df_pld[['Package ID'] == i]
+                # pld_row_data = pld_row_data['Date'] == hist_date]
+            
+            
     pass
 # ---------------------------------------------- END DATAFRAME FUNCTIONS ------------>
 
@@ -428,6 +496,15 @@ def build_data():
             except Exception as err:
                 df_name = 'df_pld'
                 make_dataframes_exception_message(df_name, file, err)
+                
+    # drop any duplicate in the dataframe
+    df_pld = df_pld.drop_duplicates()
+    
+    # reset indices for the dataframe
+    df_pld = df_pld.reset_index(drop=True)
+    
+    # completion message
+    print("PLD dataframe complete.")
     # ----------------- PLD dataframe complete --------------------->
     
     return df_aggregate, df_package, df_history, df_pld
@@ -476,6 +553,7 @@ def main(args):
             df_aggregate.to_pickle('df_aggregate.pkl')
             df_package.to_pickle('df_package.pkl')
             df_history.to_pickle('df_history.pkl')
+            df_pld.to_pickle('df_pld.pkl')
             
             print("Dataframe Aggregate:\n", df_aggregate, end='\n')
             print("Dataframe Package:\n", df_package, end='\n')
