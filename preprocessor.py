@@ -98,8 +98,9 @@ def make_dataframes_exception_message(df_name, file, error):
 # ---------------------------------------------- END HELPER FUNCTIONS --------------->
 
 
-
-# -------------------------------------------------- DATAFRAME FUNCTIONS ------------>
+# -------------------------------------------------------------------------------------------------------->
+# -------------------------------------------------- DATAFRAME FUNCTIONS --------------------------------->
+# -------------------------------------------------------------------------------------------------------->
 
 def make_aggregate_dataframe(xlsx_file, date):
     # read Excel sheet
@@ -339,38 +340,119 @@ def make_pld_dataframe(xlsx_file, date):
     
     
 def history_merge_pld(df_history, df_pld):
+    # initialize new dataframe for the merge
+    merged_dataframe = df_history
+
     # all the unique package IDs from the history dataframe
-    history_idx = pd.unique(df_history['Package ID'])
+    history_idx = pd.unique(merged_dataframe['Package ID'])
     
-    # initialize the new merged dataframe
-    column_names = np.append(df_history.columns, df_pld)
-    df = pd.DataFrame(df_history.columns) 
+    # add PLD columns to the history dataframe
+    pld_columns = df_pld[['Provider', 'Assigned Area', 'Loaded Area', 'Zipcode']].columns
     
-    # loop over all individual packages
-    for i in history_idx:
-        # make a dataframe for the package's history
+    # build blank columns for PLD data
+    array_provider = np.full((len(merged_dataframe)), '', dtype='str')
+    array_assigned_area = np.full((len(merged_dataframe)), 0, dtype='int')
+    array_loaded_area = np.full((len(merged_dataframe)), 0, dtype='int')
+    array_zipcode = np.full((len(merged_dataframe)), 0, dtype='int')
+    
+    # insert new columns into package's history dataframe
+    merged_dataframe.insert(loc=len(merged_dataframe.columns), column='Provider', value=array_provider)
+    merged_dataframe.insert(loc=len(merged_dataframe.columns), column='Assigned Area', value=array_assigned_area)
+    merged_dataframe.insert(loc=len(merged_dataframe.columns), column='Loaded Area', value=array_loaded_area)
+    merged_dataframe.insert(loc=len(merged_dataframe.columns), column='Zipcode', value=array_zipcode)
+    
+    # ------------------------------------------- MERGING CODE ------------------------------>
+    
+    # error tracking for the loop below
+    errors = 0
+    pkg_error = False
+    
+    # loop over all the individual packages in history
+    print("Merging df_history and df_pld...")
+    for i in tqdm(history_idx):
+        # collect and reset error
+        if pkg_error == True:
+            errors += 1
+            pkg_error = False
+    
+        # get the package's history
         df_pkg_hist = df_history[df_history['Package ID'] == i]
         
-        # loop over all the rows in the package's history...
-        for r in range(len(df_pkg_hist)):
+        # get the package's pld data
+        df_pkg_pld = df_pld[df_pld['Package ID'] == i]
+        
+        # for each entry for the package in the PLD dataframe
+        for j in df_pkg_pld['Date']:
+            # dataframe from package's history for this date
+            df_hist_dates = df_pkg_hist[df_pkg_hist['Date'] == j]
+            # print(df_hist_dates)
             
-            # when the Driver Code is not 0...
-            if df_pkg_hist['Driver Code'].iloc[r] > 0:
-                # get the date from current row
-                hist_date = df_pkg_hist['Date'].iloc[i]
+            try:
+                # tuple in package PLD for the date
+                df_pld_date = df_pkg_pld[df_pkg_pld['Date'] == j]
                 
-                # get the row from PLD matching the current row
-                pld_row_data = df_pld[['Package ID'] == i]
-                # pld_row_data = pld_row_data['Date'] == hist_date]
+                # driver code form the PLD date tuple
+                driver_code = df_pld_date['Driver Code'].values[0]
+                
+        
+                # first attempt to get an index
+                index = df_hist_dates[df_hist_dates['Driver Code'] == driver_code].first_valid_index()
+                
+                # second attempt
+                if index == None:
+                    index = df_hist_dates[df_hist_dates['Station Code'] == driver_code].first_valid_index()
+                
+                # third attempt
+                if index == None:
+                    index = df_pkg_hist[df_pkg_hist['Date'] == j].first_valid_index()
+                
+                merged_dataframe.at[index, 'Provider'] = df_pld_date['Provider'].values[0]
+                merged_dataframe.at[index, 'Assigned Area'] = df_pld_date['Assigned Area'].values[0]
+                merged_dataframe.at[index, 'Loaded Area'] = df_pld_date['Loaded Area'].values[0]
+                merged_dataframe.at[index, 'Zipcode'] = df_pld_date['Zipcode'].values[0]
+                
+            except:
+                # set package error to true
+                pkg_error = True
+                
+                # print error notification
+                print('\n\n')
+                print('Error with package:', i)
+                print('For date:', j)
+                print('\n\n')
+    
+    print("\n\nMerging complete.\n\n")
+    # --------------------------------------- END MERGING CODE ------------------------------>
+    
+    # ----------------------------- CLEANUP AND TYPE CASTING -------------------------------->
+    # drop missing values
+    merged_dataframe = merged_dataframe.dropna()
+    
+    # type casting for columns
+    merged_dataframe.index = merged_dataframe.index.astype('int')    
+    merged_dataframe['Package ID'] = merged_dataframe['Package ID'].astype('string')    
+    merged_dataframe['Order'] = merged_dataframe['Order'].astype('int')    
+    merged_dataframe['Date'] = merged_dataframe['Date'].astype('string')   
+    merged_dataframe['DoW'] = merged_dataframe['DoW'].astype('string')   
+    merged_dataframe['Station Code'] = merged_dataframe['Station Code'].astype('int')   
+    merged_dataframe['Driver Code'] = merged_dataframe['Driver Code'].astype('int')   
+    merged_dataframe['Reason'] = merged_dataframe['Reason'].astype('int')            
+    merged_dataframe['Zipcode'] = merged_dataframe['Zipcode'].astype('int')    
+    merged_dataframe['Provider'] = merged_dataframe['Provider'].astype('string')    
+    merged_dataframe['Assigned Area'] = merged_dataframe['Assigned Area'].astype('int')
+    merged_dataframe['Loaded Area'] = merged_dataframe['Loaded Area'].astype('int')
+    # ------------------------- END CLEANUP AND TYPE CASTING -------------------------------->
             
-            
-    pass
-# ---------------------------------------------- END DATAFRAME FUNCTIONS ------------>
+    return merged_dataframe
+# -------------------------------------------------------------------------------------------------------->    
+# ---------------------------------------------- END DATAFRAME FUNCTIONS --------------------------------->
+# -------------------------------------------------------------------------------------------------------->
 
 
 
-
-# -------------------------------------------------- BUILD DATA --------------------->
+# -------------------------------------------------------------------------------------------------------->
+# -------------------------------------------------- BUILD DATA ------------------------------------------>
+# -------------------------------------------------------------------------------------------------------->
 def build_data():
     global FILES
     global START
@@ -507,9 +589,14 @@ def build_data():
     print("PLD dataframe complete.")
     # ----------------- PLD dataframe complete --------------------->
     
-    return df_aggregate, df_package, df_history, df_pld
-# ---------------------------------------------- END BUILD DATA --------------------->
-
+    
+    # !!! MERGE PLD WITH HISTORY !!!
+    df_history = history_merge_pld(df_history, df_pld)
+    
+    return df_aggregate, df_package, df_history
+# -------------------------------------------------------------------------------------------------------->
+# ---------------------------------------------- END BUILD DATA ------------------------------------------>
+# -------------------------------------------------------------------------------------------------------->
 
 
 
@@ -546,19 +633,17 @@ def main(args):
 
     # start preprocessing data
     while True:
-        process_inst = input("\n\nReady to preprocess data. Countinue? [Y/N]: ")
+        process_inst = input("\n\nReady to build data. Countinue? [Y/N]: ")
         if process_inst.upper() == "Y":
-            df_aggregate, df_package, df_history, df_pld = build_data()
+            df_aggregate, df_package, df_history = build_data()
             
             df_aggregate.to_pickle('df_aggregate.pkl')
             df_package.to_pickle('df_package.pkl')
             df_history.to_pickle('df_history.pkl')
-            df_pld.to_pickle('df_pld.pkl')
             
             print("Dataframe Aggregate:\n", df_aggregate, end='\n')
             print("Dataframe Package:\n", df_package, end='\n')
             print("Dataframe History:\n", df_history, end='\n')
-            print("Dataframe PLD:\n", df_pld, end='\n')
             
             sys.exit()
         elif process_inst.upper() == "N":
