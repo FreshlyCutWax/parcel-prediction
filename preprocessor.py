@@ -15,8 +15,14 @@ import sys
 import os
 import datetime
 
-# other libraries
+# progress bar
 from tqdm import tqdm
+
+# console menu
+from consolemenu import *
+from consolemenu.items import *
+
+# warning handling
 import warnings
 
 
@@ -76,6 +82,32 @@ def capture_file_date(filename):
 # -------------------------------------------------------------------------------------------------------->
 # ---------------------------------------------- END FILE FUNCTIONS -------------------------------------->
 # -------------------------------------------------------------------------------------------------------->
+
+
+# -------------------------------------------------------------------------------------------------------->
+# ---------------------------------------------- MENU FUNTION -------------------------------------------->
+# -------------------------------------------------------------------------------------------------------->
+def menu(start_string, end_string):
+    # main menu creation
+    main_menu = ConsoleMenu("Preprocessor", start_string + '\n' + end_string)
+    
+    # menu options
+    option_build  = MenuItem("Build Dataframes")
+    option_clean  = MenuItem("Clean Dataframes")
+    option_errors = MenuItem("Show Errors")
+    option_show   = MenuItem("Show Current Dataframes")
+    
+    # add options to the menu
+    main_menu.append_item(option_build)
+    main_menu.append_item(option_clean)
+    main_menu.append_item(option_errors)
+    main_menu.append_item(option_show)
+    
+    main_menu.show()
+# -------------------------------------------------------------------------------------------------------->
+# ---------------------------------------------- END MENU FUNTION ---------------------------------------->
+# -------------------------------------------------------------------------------------------------------->
+
 
 
 # -------------------------------------------------------------------------------------------------------->
@@ -722,13 +754,13 @@ def main(args):
     global END
     
     # console space
-    print('\n')
+    # print('\n')
     
     # check if custom file path is given
     if len(args) > 1:
         PATH = args[1]
         
-    print("Data path:", "\'" + PATH + "\'", end="\n\n")
+    # print("Data path:", "\'" + PATH + "\'", end="\n\n")
     
     # attempt to get the data file list
     FILES = capture_filenames(PATH)
@@ -742,10 +774,18 @@ def main(args):
     # attempt to get the range of dates from the files
     START = capture_file_date(FILES[0])
     END = capture_file_date(FILES[len(FILES)-1])
-    print("Start Date:", START)
-    print("End Date:", END)
+    # print("Start Date:", START)
+    # print("End Date:", END) 
+    start_string = "Start Date: " + str(START)
+    end_string = "End Date: " + str(END)
+    
+    # prompt the main menu
+    menu(start_string, end_string)
+    
+    
 
     # start preprocessing data
+    """
     while True:
         process_inst = input("\n\nReady to build data. Countinue? [Y/N]: ")
         if process_inst.upper() == "Y":
@@ -767,7 +807,7 @@ def main(args):
             sys.exit()
         else:
             print("Invalid selection.")
-    
+    """
     
 	
 
