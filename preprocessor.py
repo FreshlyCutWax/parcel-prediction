@@ -18,6 +18,7 @@ import datetime
 # other libraries
 from tqdm import tqdm
 import warnings
+from collections import defaultdict
 
 
 
@@ -309,10 +310,56 @@ def make_history_dataframe(xlsx_file, which):
     # cast column types
     for i in df[['Package ID', 'Date', 'DoW', 'Type']].columns:
         df[i] = df[i].astype('string')
-    
+
+    recode_and_compress_history(df)
     return df
 
+def recode_and_compress_history(df_history):
+    # Recodes List
+    recode_dict = {1: {1, 4, 7, 11, 36, 57, 59, 82, 83}, 2: {15, 34, 47, 94, 100}, 3: {40, 300},
+                   4: {33, 35, 42, 43, 51, 52, 53, 56, 63, 67, 68}, 5: {12, 16, 27, 37},
+                   6: {2, 3, 17}, 7: {85}, 8: {6, 81}, 9: {10}}
 
+    # Use default_dict so that codes other than recodes default to 0
+    defaultDict = defaultdict(lambda: 0)
+    for k, v in recode_dict.items():
+        for vv in v:
+            defaultDict[vv] = k
+
+    # Do the recoding
+    for col in ["Driver Code", "Station Code"]:
+        df_history[col] = df_history[col].astype(int).apply(lambda x: defaultDict[x])
+
+
+    # Make list of DF's where each DF is a different package's history
+    newDf = df_history.iloc[0:0].copy()
+    i = 0
+    dfList = []
+    startid = df_history['Package ID'][0]
+
+    for x in df_history['Package ID']:
+        if x == startid:
+            row = df_history.loc[i]
+            newDf.loc[len(newDf)] = row
+            i += 1
+        else:
+            dfList.append(newDf)
+            newDf = df_history.iloc[0:0].copy()
+            startid = df_history['Package ID'][i]
+            i += 1
+
+    # Obtain list of station codes and driver codes
+    SC_list = []
+    DC_list = []
+
+    for df in dfList:
+        SC_vals = df['Station Code'].tolist()
+        SC_list.append(SC_vals)
+        DC_vals = df['Driver Code'].tolist()
+        DC_list.append(DC_vals)
+
+    # Eventually return recoded df + somehow compressed
+    return df_history
 
 
 def make_pld_dataframe(xlsx_file, date):
@@ -406,7 +453,7 @@ def compare_dataframe(df_target, df_concat):
             
     return df
 
-    
+
     
     
 def history_merge_pld(df_history, df_pld):
@@ -713,35 +760,33 @@ def build_data():
 # -------------------------------------------------------------------------------------------------------->
 
 
-
 def main(args):
     # reference global variables
     global PATH
     global FILES
     global START
     global END
-    
+
     # console space
     print('\n')
-    
+
     # check if custom file path is given
     if len(args) > 1:
         PATH = args[1]
-        
+
     print("Data path:", "\'" + PATH + "\'", end="\n\n")
-    
+
     # attempt to get the data file list
     FILES = capture_filenames(PATH)
- 
+
     # check to see if we got the data files we need
     if not FILES:
         print("No data was found. Preprocessing has ended.")
         sys.exit()
-    
-    
+
     # attempt to get the range of dates from the files
     START = capture_file_date(FILES[0])
-    END = capture_file_date(FILES[len(FILES)-1])
+    END = capture_file_date(FILES[len(FILES) - 1])
     print("Start Date:", START)
     print("End Date:", END)
 
@@ -750,24 +795,23 @@ def main(args):
         process_inst = input("\n\nReady to build data. Countinue? [Y/N]: ")
         if process_inst.upper() == "Y":
             df_aggregate, df_package, df_history, build_error_log, merge_error_log = build_data()
-            
+
             error_reporter(build_error_log, merge_error_log)
-            
+
             df_aggregate.to_pickle('df_aggregate.pkl')
             df_package.to_pickle('df_package.pkl')
             df_history.to_pickle('df_history.pkl')
-            
+
             print("Dataframe Aggregate:\n", df_aggregate, end='\n')
             print("Dataframe Package:\n", df_package, end='\n')
             print("Dataframe History:\n", df_history, end='\n')
-            
+
             sys.exit()
         elif process_inst.upper() == "N":
             print("Ending Preprocessing. Goodbye.")
             sys.exit()
         else:
             print("Invalid selection.")
-    
     
 	
 
