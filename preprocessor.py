@@ -117,6 +117,7 @@ def load_dataframes():
     
 
 
+
 def store_dataframes():
     global DATAFRAMES
     
@@ -154,6 +155,7 @@ def store_error_logs():
     
     with open('errors.pkl', 'wb') as handle:   
         pickle.dump(ERROR_LOGS, handle)
+    pass
 # -------------------------------------------------------------------------------------------------------->
 # ---------------------------------------------- END FILE FUNCTIONS -------------------------------------->
 # -------------------------------------------------------------------------------------------------------->
@@ -263,22 +265,26 @@ def display_dataframes():
 # -------------------------------------------------------------------------------------------------------->
 # ---------------------------------------------- GETTERS AND SETTERS ------------------------------------->
 # -------------------------------------------------------------------------------------------------------->
-def update_path(path, path_type):
+def set_path(path, path_type):
     """
-    update_path(path, path_type) -> success (bool)
+    set_path(path, path_type) -> None
     
     args:
-    path (string) -> file path to data
-    path_type (string) -> 'data', 'output', 'script'   
+    path (string) -> directory path
+    path_type (string) -> 'data', 'output', 'script'
+    
+    returns:
+    None
     
     Desc:
-    Update the value for a specified path in the directory.
+    Update the global value for a specified path in the directory.
     """
     global DATA_PATH
     global OUTPUT_PATH
     global SCRIPT_PATH
     
-    success = True
+    # match path type and set path
+    # nothing if wrong path type
     if path_type == 'data':
         DATA_PATH = path
     elif path_type == 'output':
@@ -286,9 +292,7 @@ def update_path(path, path_type):
     elif path_type == 'script':
         SCRIPT_PATH = path
     else:
-        success = False
-    
-    return success
+        pass
     
     
     
@@ -298,16 +302,19 @@ def get_path(path_type):
     get_path(path_type) -> path (string)
     
     args:
-    path_type (string) -> 'data', 'output', 'script'   
+    path_type (string) -> 'data', 'output', 'script'
+    
+    returns:
+    path (string) -> directory path
     
     Desc:
-    Get the value for a specified path in the directory.
+    Get the global value for a specified path in the directory.
     """
     global DATA_PATH
     global OUTPUT_PATH
     global SCRIPT_PATH
     
-    # match path type and set to return value
+    # match path type and set path to return value
     # empty if incorrect path type
     path = ''
     if path_type == 'data':
@@ -324,20 +331,67 @@ def get_path(path_type):
     
     
     
-def update_filenames():
-    pass
+def set_filenames(file_list):
+    """
+    set_filenames(file_list) -> None
+    
+    args:
+    file_list (string) -> list of filenames
+    
+    returns:
+    None
+    
+    Desc:
+    Set the global list of filenames.
+    """
+    global FILES
+    
+    # set the global file list
+    FILES = file_list
+
+
     
     
     
     
-def append_filename(file):
-    pass
+def append_filename(filename):
+    """
+    append_filename(filename) -> None
+    
+    args:
+    filename (string) -> a file name
+    
+    returns:
+    None
+    
+    Desc:
+    Append filename to the global list of filenames.
+    """
+    global FILES
+    
+    # append the file name to global file list
+    FILES.append(filename)
     
     
     
     
 def get_filenames():
-    pass
+    """
+    get_filename() -> file_list (string)
+    
+    args:
+    None
+    
+    returns:
+    file_list (string) -> list of filenames
+    
+    Desc:
+    Get the list of filenames from the global filename list.
+    """
+    global FILES
+    
+    # return the global filename list
+    return FILES
     
     
     
@@ -1012,7 +1066,6 @@ def build_data():
 
 def main(args):
     # reference global variables
-    global DATA_PATH
     global FILES
     global START
     global END
@@ -1020,7 +1073,7 @@ def main(args):
     
     # check if custom file path is given
     if len(args) > 1:
-        DATA_PATH = args[1]
+        set_path(args[1], 'data')
     
     # check file paths
     check_path()
