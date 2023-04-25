@@ -927,7 +927,6 @@ def history_merge_pld(df_history, df_pld):
 # -------------------------------------------------- BUILD DATA ------------------------------------------>
 # -------------------------------------------------------------------------------------------------------->
 def build_data():
-    global START
     global DATAFRAMES
     global ERROR_LOGS
     
@@ -937,14 +936,17 @@ def build_data():
     # get filenames
     files = get_filenames()
     
+    # get the start date
+    start_date = get_start_date()
+    
     # load Excel Workbook
     xlsx = pd.ExcelFile(files[0])
     
     # initialize all dataframes
-    df_aggregate = make_aggregate_dataframe(xlsx, START)
+    df_aggregate = make_aggregate_dataframe(xlsx, start_date)
     df_package = make_package_dataframe(xlsx, 'SVC')
     df_history = make_history_dataframe(xlsx, 'HIST')
-    df_pld = make_pld_dataframe(xlsx, START)
+    df_pld = make_pld_dataframe(xlsx, start_date)
     
     print("Dataframe initialization complete.")
     # ------------------- initialization complete ------------------>
@@ -1074,7 +1076,7 @@ def build_data():
     # reset indices for the dataframe
     df_history = df_history.reset_index(drop=True)
     
-    # add entry indexing
+    # !!! HISTORY EVENT INDEXING HERE !!!
     df_history = index_history(df_history)
     
     # completion message
@@ -1136,12 +1138,7 @@ def build_data():
 
 
 
-def main(args):
-    # reference global variables
-    global START
-    global END
-    
-    
+def main(args):    
     # check if custom file path is given
     if len(args) > 1:
         set_path(args[1], 'data')
@@ -1162,10 +1159,10 @@ def main(args):
     
     
     # attempt to get the range of dates from the files
-    START = capture_file_date(files[0])
-    END = capture_file_date(files[len(files)-1]) 
-    start_string = "Start Date: " + str(START)
-    end_string = "End Date: " + str(END)
+    start_date = capture_file_date(files[0])
+    end_date = capture_file_date(files[len(files)-1]) 
+    start_string = "Start Date: " + str(start_date)
+    end_string = "End Date: " + str(end_date)
     
     # prompt the main menu
     menu(start_string, end_string)
