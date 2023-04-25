@@ -154,13 +154,15 @@ def load_error_logs():
         path = os.path.join(script_path, 'build_errors.pkl')
         if os.path.exists(path):
             with open(path, 'rb') as handle:
-                ERROR_LOGS[0] = pickle.load(handle)
+                log = pickle.load(handle)
+                set_error_log(log, 'build')
         
         # load merge log and set to our global error log list, if it exists
         path = os.path.join(script_path, 'merge_errors.pkl')
         if os.path.exists(path):
             with open(path, 'rb') as handle:
-                ERROR_LOGS[1] = pickle.load(handle)
+                log = pickle.load(handle)
+                set_error_log(log, 'merge')
     except:
         success = False
         
@@ -209,9 +211,9 @@ def menu(start_string, end_string):
     
     # menu options
     option_build  = FunctionItem("Build Dataframes", build_data, [])
-    option_clean  = MenuItem("Clean Dataframes")
-    option_errors = MenuItem("Show Errors")
-    option_show   = MenuItem("Show Current Dataframes")
+    option_clean  = MenuItem("Clean Dataframes [Not Functioning]")
+    option_errors = FunctionItem("Show Errors", display_errors, [])
+    option_show   = FunctionItem("Show Current Built Dataframes", display_dataframes, [])
     
     # add options to the menu
     main_menu.append_item(option_build)
@@ -260,29 +262,52 @@ def date_to_str(date):
     # convert date into a string
     str_date = date.strftime('%Y%m%d')
     return str_date
+# -------------------------------------------------------------------------------------------------------->
+# ---------------------------------------------- END HELPER FUNCTIONS ------------------------------------>
+# -------------------------------------------------------------------------------------------------------->
 
 
 
 
+# -------------------------------------------------------------------------------------------------------->
+# -------------------------------------------- USER DISPLAY FUNCTIONS ------------------------------------>
+# -------------------------------------------------------------------------------------------------------->
 def display_errors():
-    global ERROR_LOGS
+    # get the error logs
+    build_log = get_error_log('build')
+    merge_log = get_error_log('merge')
     
-    # print the error report for data building
-    for i in ERROR_LOGS[0]:
-        print("\n") 
-        print("Error while building data for:", i[0])
-        print("Error from file:", i[1])
-        print(type(i[2]), ':', i[2], end='\n')
-        
-    print("\nThis data was not build!", end='\n\n')
+    # ask the user which errors to see
+    print("Which errors would you like to see?")
+    print("Options: B = Build, M = Merge")
+    print("\n")
+    option = input(": ")
     
-    # print error report for data merging
-    for i in ERROR_LOGS[1]:
+    if option.upper() == 'B':
+        # print the error report for data building
+        for i in build_log:
+            print("\n") 
+            print("Error while building data for:", i[0])
+            print("Error from file:", i[1])
+            print(type(i[2]), ':', i[2])
+            print('\n')
+            
+        print("This data was not build!", end='\n\n')
+    elif option.upper() == 'M':
+        # print error report for data merging
+        for i in merge_log:
+            print('\n')
+            print('Error with package:', i[0])
+            print('For date:', i[1])
+            print('\n')
+            
+        print("This data was not merged!", end='\n\n')
+    else:
         print('\n')
-        print('Error with package:', i[0])
-        print('For date:', i[1], end='\n\n')
+        print("Invalid selection.")
         
-    print("\nThis data was not merged!", end='\n\n')
+    # Wait until the user clears screen
+    input("Press enter to continue...")
     
     
     
@@ -294,14 +319,15 @@ def display_dataframes():
     df_history = get_dataframe('history')
     
     # display the dataframes on the console
-    print("Dataframe Aggregate:\n", df_aggregate, end='\n')
-    print("Dataframe Package:\n", df_package, end='\n')
-    print("Dataframe History:\n", df_history, end='\n') 
-    input("\nPress enter to continue...")
-# -------------------------------------------------------------------------------------------------------->
-# ---------------------------------------------- END HELPER FUNCTIONS ------------------------------------>
-# -------------------------------------------------------------------------------------------------------->
+    print("Dataframe Aggregate:\n", df_aggregate, end='\n\n')
+    print("Dataframe Package:\n", df_package, end='\n\n')
+    print("Dataframe History:\n", df_history, end='\n\n')
 
+    # Wait until the user clears screen
+    input("Press enter to continue...")
+# -------------------------------------------------------------------------------------------------------->
+# -------------------------------------------- END DISPLAY FUNCTIONS ------------------------------------->
+# -------------------------------------------------------------------------------------------------------->
 
 
 
@@ -335,7 +361,7 @@ def set_path(path, path_type):
     elif path_type == 'script':
         SCRIPT_PATH = path
     else:
-        pass
+        print("", end="")
     
     
     
@@ -557,7 +583,7 @@ def set_dataframe(df, df_type):
     elif df_type == 'history':
         DATAFRAMES[2] = df
     else:
-        pass
+        print("", end="")
     
     
     
@@ -616,7 +642,7 @@ def set_error_log(log, log_type):
     elif log_type == 'clean':
         ERROR_LOGS[2] = log
     else:
-        pass
+        print("", end="")
         
         
         
@@ -648,7 +674,6 @@ def get_error_log(log_type):
         log = []
         
     return log
-    pass
 # -------------------------------------------------------------------------------------------------------->
 # ------------------------------------------- END GETTERS AND SETTERS ------------------------------------>
 # -------------------------------------------------------------------------------------------------------->
@@ -1029,8 +1054,6 @@ def history_merge_pld(df_history, df_pld):
 # -------------------------------------------------- BUILD DATA ------------------------------------------>
 # -------------------------------------------------------------------------------------------------------->
 def build_data():
-    global ERROR_LOGS
-    
     # ------------------- initialize dataframes -------------------->
     print("\nInitializing dataframes...")
     
@@ -1316,6 +1339,24 @@ def main(args):
     end_date = capture_file_date(files[len(files)-1]) 
     start_string = "Start Date: " + str(start_date)
     end_string = "End Date: " + str(end_date)
+    
+    # load dataframes and error logs
+    load_df_success = load_dataframes()
+    load_log_success = load_error_logs()
+    
+    # check if file loading was successful
+    if load_df_success == True:
+        print("Built dataframes loaded successfully.", end='\n\n')
+    else:
+        print("Built dataframes not loaded.", end='\n\n')
+    
+    if load_log_success == True:
+        print("Error logs loaded successfully.", end='\n\n')
+    else:
+        print("Error logs not loaded.", end='\n\n')
+        
+    # Wait for user to continue
+    input("Press enter to continue...")
     
     # prompt the main menu
     menu(start_string, end_string)
