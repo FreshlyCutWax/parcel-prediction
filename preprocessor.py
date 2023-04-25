@@ -212,12 +212,14 @@ def menu(start_string, end_string):
     # menu options
     option_build  = FunctionItem("Build Dataframes", build_data, [])
     option_clean  = MenuItem("Clean Dataframes [Not Functioning]")
+    option_dates  = FunctionItem("Display All File Dates", display_dates, [])
     option_errors = FunctionItem("Show Errors", display_errors, [])
     option_show   = FunctionItem("Show Current Built Dataframes", display_dataframes, [])
     
     # add options to the menu
     main_menu.append_item(option_build)
     main_menu.append_item(option_clean)
+    main_menu.append_item(option_dates)
     main_menu.append_item(option_errors)
     main_menu.append_item(option_show)
     
@@ -325,8 +327,35 @@ def display_dataframes():
 
     # Wait until the user clears screen
     input("Press enter to continue...")
+    
+    
+    
+    
+def display_dates():
+    # get file list
+    filenames = get_filenames()
+    
+    # capture date and display
+    for f in filenames:
+        date = capture_file_date(f)
+        print(date)
+      
+    print("\n\n")
+    input("Press enter to continue...")
 # -------------------------------------------------------------------------------------------------------->
 # -------------------------------------------- END DISPLAY FUNCTIONS ------------------------------------->
+# -------------------------------------------------------------------------------------------------------->
+
+
+
+# -------------------------------------------------------------------------------------------------------->
+# -------------------------------------------- CHANGE DATES FUNTIONS ------------------------------------->
+# -------------------------------------------------------------------------------------------------------->
+def change_start():
+    # prompt user to change the date
+    pass
+# -------------------------------------------------------------------------------------------------------->
+# -------------------------------------------- END CHANGE DATES ------------------------------------------>
 # -------------------------------------------------------------------------------------------------------->
 
 
@@ -929,12 +958,27 @@ def index_history(df_history):
 
 
 
+def check_df_is_empty(xlsx_file, df_type):
+    # read Excel sheet
+    df = pd.read_excel(xlsx_file, df_type)
+    
+    # True if df is empty, False if populated
+    is_empty = False
+    if df.empty:
+        is_empty = True
+        
+    return is_empty
+
+
+
+
 def compare_dataframe(df_target, df_concat):
     target_pkgs = pd.unique(df_target['Package ID'])
     concat_pkgs = pd.unique(df_concat['Package ID'])
     
     df = df_concat.copy()
     
+    # remove packages from the dataframe that you want to concat
     for i in target_pkgs:
         if i in concat_pkgs:
             df = df[df['Package ID'] != i]
@@ -1133,12 +1177,15 @@ def build_data():
             try:
                 # load Excel file and file date
                 xlsx = pd.ExcelFile(file)
-                # xlsx_date = capture_file_date(file)
                 
-                # create dataframe from file and append to package dataframe
-                df_xlsx = make_package_dataframe(xlsx, '85_SVC')
-                df_xlsx = compare_dataframe(df_package, df_xlsx)
-                df_package = pd.concat([df_package, df_xlsx])
+                # check to see if the dataframe is empty first
+                is_empty = check_df_is_empty(xlsx, '85_SVC')
+                
+                if is_empty != True:
+                    # create dataframe from file and append to package dataframe
+                    df_xlsx = make_package_dataframe(xlsx, '85_SVC')
+                    df_xlsx = compare_dataframe(df_package, df_xlsx)
+                    df_package = pd.concat([df_package, df_xlsx])
             
             except Exception as err:
                     df_name = 'df_package'
@@ -1185,14 +1232,18 @@ def build_data():
                 # load Excel file and file date
                 xlsx = pd.ExcelFile(file)
                 
-                # create dataframe from file and append to package dataframe
-                df_xlsx = make_history_dataframe(xlsx, '85_HIST')
-                df_xlsx = compare_dataframe(df_history, df_xlsx)
-                df_history = pd.concat([df_history, df_xlsx])
+                # check to see if the dataframe is empty first
+                is_empty = check_df_is_empty(xlsx, '85_HIST')
+                
+                if is_empty != True:
+                    # create dataframe from file and append to package dataframe
+                    df_xlsx = make_history_dataframe(xlsx, '85_HIST')
+                    df_xlsx = compare_dataframe(df_history, df_xlsx)
+                    df_history = pd.concat([df_history, df_xlsx])
             
             except Exception as err:
-                    df_name = 'df_history'
-                    build_error_log.append([df_name, file, err])
+                df_name = 'df_history'
+                build_error_log.append([df_name, file, err])
     
     # drop any duplicate in the dataframe
     df_history = df_history.drop_duplicates()
