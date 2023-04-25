@@ -311,13 +311,14 @@ def make_history_dataframe(xlsx_file, which):
     for i in df[['Package ID', 'Date', 'DoW', 'Type']].columns:
         df[i] = df[i].astype('string')
 
-    recode_and_compress_history(df)
+    recodedDF = recode_history(df)
+    compress_history(recodedDF)
     return df
 
-def recode_and_compress_history(df_history):
+def recode_history(df_history):
     # Recodes List
     recode_dict = {1: {1, 4, 7, 11, 36, 57, 59, 82, 83}, 2: {15, 34, 47, 94, 100}, 3: {40, 300},
-                   4: {33, 35, 42, 43, 51, 52, 53, 56, 63, 67, 68}, 5: {12, 16, 27, 37},
+                   4: {33, 35, 42, 43, 51, 52, 53, 54, 56, 63, 67, 68}, 5: {12, 16, 27, 37},
                    6: {2, 3, 17}, 7: {85}, 8: {6, 81}, 9: {10}}
 
     # Use default_dict so that codes other than recodes default to 0
@@ -330,23 +331,37 @@ def recode_and_compress_history(df_history):
     for col in ["Driver Code", "Station Code"]:
         df_history[col] = df_history[col].astype(int).apply(lambda x: defaultDict[x])
 
+    return df_history
 
-    # Make list of DF's where each DF is a different package's history
+def compress_history(df_history):
+    # create a new dataframe to hold each df to add to list
     newDf = df_history.iloc[0:0].copy()
+
+    # initialize variables
     i = 0
     dfList = []
     startid = df_history['Package ID'][0]
 
+    # iterate through the dataframe add each package as a separate entry in the list
     for x in df_history['Package ID']:
         if x == startid:
             row = df_history.loc[i]
             newDf.loc[len(newDf)] = row
             i += 1
         else:
-            dfList.append(newDf)
+            # add the df to the list
+            if len(newDf) > 0:
+                dfList.append(newDf)
+
+            # start a newDF for the next package entry
             newDf = df_history.iloc[0:0].copy()
             startid = df_history['Package ID'][i]
             i += 1
+
+    # add the final compressed history to the list
+    if len(newDf) > 0:
+        dfList.append(newDf)
+
 
     # Obtain list of station codes and driver codes
     SC_list = []
@@ -354,12 +369,24 @@ def recode_and_compress_history(df_history):
 
     for df in dfList:
         SC_vals = df['Station Code'].tolist()
+        df['Station Code'] = SC_vals
         SC_list.append(SC_vals)
         DC_vals = df['Driver Code'].tolist()
         DC_list.append(DC_vals)
 
+    first_rows = [df.iloc[0] for df in dfList]
+
+    # Concatenate the first rows into a new dataframe
+    compressed_df = pd.concat(first_rows, axis=1).T
+
+
+    compressed_df = compressed_df.drop('Station Code', axis=1)
+    compressed_df['Station Code'] = SC_list
+    compressed_df = compressed_df.drop('Driver Code', axis=1)
+    compressed_df['Driver Code'] = DC_list
+
     # Eventually return recoded df + somehow compressed
-    return df_history
+    return compressed_df
 
 
 def make_pld_dataframe(xlsx_file, date):
@@ -812,8 +839,6 @@ def main(args):
             sys.exit()
         else:
             print("Invalid selection.")
-    
-	
 
 if __name__ == "__main__":
     main(sys.argv)
