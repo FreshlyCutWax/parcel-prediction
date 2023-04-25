@@ -490,14 +490,60 @@ def get_end_date():
     
     
     
-def update_dataframes():
-    pass
+def set_dataframe(df, df_type):
+    """
+    set_dataframes(df, df_type) -> None
+    
+    args:
+    df (dataframe object) -> dataframe
+    df_type (string) -> 'aggregate', 'package', or 'history'
+    
+    returns:
+    None
+    
+    Desc:
+    Set the global list that stores the built dataframes.
+    """
+    global DATAFRAMES
+    
+    if df_type == 'aggregate':
+        DATAFRAMES[0] = df        
+    elif df_type == 'package':
+        DATAFRAMES[1] = df      
+    elif df_type == 'history':
+        DATAFRAMES[2] = df
+    else:
+        pass
     
     
     
     
-def get_dataframes():
-    pass
+def get_dataframe(df_type):
+    """
+    get_dataframes() -> dataframe (dataframe object)
+    
+    args:
+    df_type (string) -> 'aggregate', 'package', 'history'
+    
+    returns:
+    dataframe (datetime object) -> selected dataframe
+    
+    Desc:
+    Get a dataframe from the global list that stores the built dataframes.
+    """
+    global DATAFRAMES
+    
+    df = None
+    if df_type == 'aggregate':
+        df = DATAFRAMES[0]
+    elif df_type == 'package':
+        df = DATAFRAMES[1]
+    elif df_type == 'history':
+        df = DATAFRAMES[2]
+    else:
+        df = None
+        
+    return df
     
     
     
