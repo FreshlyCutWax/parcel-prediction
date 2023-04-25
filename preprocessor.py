@@ -14,6 +14,7 @@ import pandas as pd
 import sys
 import os
 import datetime
+import pickle
 
 # progress bar
 from tqdm import tqdm
@@ -28,10 +29,14 @@ import warnings
 
 
 #  Global Variables
-PATH = "data/"                      # Path to data
+DATA_PATH = "data/"                 # Path to data
+OUTPUT_PATH = "compiled_data/"      # path for compiled data (dataframes)
+SCRIPT_PATH = "preprocessor/"       # path for error logs and such
 FILES = []                          # File list
 START = datetime.date(2000, 1, 1)   # Start date in date range
 END = datetime.date(2000, 1, 1)     # End date in date range
+DATAFRAMES = [[], [], []]                     # dataframes [df_aggregate, df_package, df_history]
+ERROR_LOGS = [[], [], []]                     # Error logs [build_errors, merge_errors, clean_errors]
 
 # ignore warnings
 warnings.filterwarnings('ignore')
@@ -40,48 +45,112 @@ warnings.filterwarnings('ignore')
 # -------------------------------------------------------------------------------------------------------->
 # -------------------------------------------------- FILE FUNCTIONS -------------------------------------->
 # -------------------------------------------------------------------------------------------------------->
-def capture_filenames(path):
-    # list for holding filenames
-    filenames = []
+def check_path():
+    global DATA_PATH
+    global OUTPUT_PATH
+    global SCRIPT_PATH
+    
+    if not os.path.exists(DATA_PATH):
+        # if no path for the data, create path and warn user
+        os.makedirs(DATA_PATH)
+        print("No file directory for the data were found.") 
+        print("Data file directory \'" + DATA_PATH + "\' has been created.")
+        
+    if not os.path.exists(OUTPUT_PATH):
+        # if no path for the output, create path and warn user
+        os.makedirs(OUTPUT_PATH)
+        print("No file directory for the output were found.") 
+        print("Output file directory \'" + OUTPUT_PATH + "\' has been created.")
+        
+    if not os.path.exists(SCRIPT_PATH):
+        # if no path for the output, create path and warn user
+        os.makedirs(SCRIPT_PATH)
+        print("No file directory for the preprocessor were found.") 
+        print("Preprocessor file directory \'" + SCRIPT_PATH + "\' has been created.")
+
+
+
+def capture_filenames():
+    global DATA_PATH
+    global FILES
     
     # if the data path exists, try and get the filenames
-    if os.path.exists(path):
-        try:
-            for file in os.listdir(path):
-                name = os.path.join(path, file)
-                
-                if os.path.isfile(name):
-                    filenames.append(name)
-        except:
-            print("An error has occurred with getting the filenames.")        
-    else:
-        # if no path for the data, create default path and warn user
-        os.makedirs(path)
-        print("No directory for the data was found.") 
-        print("Default data directory \'data/\' has been created.")
-            
-    return filenames
-
-
-
-
-def capture_file_date(filename):
-    # set default date
-    date = datetime.date(2000, 1, 1)
-    
-    # try to obtain the date from the filename
     try:
-        date = str_to_date(filename[13:21])
+        for file in os.listdir(DATA_PATH):
+            name = os.path.join(DATA_PATH, file)
+            
+            if os.path.isfile(name):
+                FILES.append(name)
     except:
-        print("\n")
-        print("An error with getting the date for " + filename + " has occurred.")
-        print("Proper filename format needed: PACKAGE_yyyymmdd")
-        print("\n")
+        print("An error has occurred with getting the filenames.")
+
+
+
+
+
+
+
+
+
+def get_dataframes():
+    global DATAFRAMES
+    global OUTPUT_PATH
     
-    return date
+    # try to read stored data
+    try:
+        # get aggregate dataframe
+        name = os.path.join(OUTPUT_PATH, 'df_aggregate.pkl')
+        if os.path.isfile(name):
+            DATAFRAMES.append(pd.read_pickle(name))
+        
+        # get package dataframe
+        name = os.path.join(OUTPUT_PATH, 'df_package.pkl')
+        if os.path.isfile(name):
+            DATAFRAMES.append(pd.read_pickle(name))
+        
+        # get history dataframe
+        name = os.path.join(OUTPUT_PATH, 'df_history.pkl')
+        if os.path.isfile(name):
+            DATAFRAMES.append(pd.read_pickle(name))    
+    except:
+        DATAFRAMES = []
+        print("No compiled dataframe files were found.")
+    
+
+
+def store_dataframes():
+    global DATAFRAMES
+    global OUTPUT_PATH
+    
+    try:
+        DATAFRAMES[0].to_pickle('df_aggregate.pkl')
+        DATAFRAMES[1].to_pickle('df_package.pkl')
+        DATAFRAMES[2].to_pickle('df_history.pkl')
+        
+        print("Dataframes have now been saved.")
+    except:
+        print("An error has occurred.")
+        print("No dataframes have been saved.")
+    
+
+
+
+
+def get_error_logs():
+    global ERROR_LOGS
+    pass
+    
+    
+    
+def store_error_logs():
+    global ERROR_LOGS
+    
+    with open('errors.pkl', 'wb') as handle:   
+        pickle.dump(ERROR_LOGS, handle)
 # -------------------------------------------------------------------------------------------------------->
 # ---------------------------------------------- END FILE FUNCTIONS -------------------------------------->
 # -------------------------------------------------------------------------------------------------------->
+
 
 
 # -------------------------------------------------------------------------------------------------------->
@@ -92,7 +161,7 @@ def menu(start_string, end_string):
     main_menu = ConsoleMenu("Preprocessor", start_string + '\n' + end_string)
     
     # menu options
-    option_build  = MenuItem("Build Dataframes")
+    option_build  = FunctionItem("Build Dataframes", build_data, [])
     option_clean  = MenuItem("Clean Dataframes")
     option_errors = MenuItem("Show Errors")
     option_show   = MenuItem("Show Current Dataframes")
@@ -110,9 +179,28 @@ def menu(start_string, end_string):
 
 
 
+
 # -------------------------------------------------------------------------------------------------------->
 # -------------------------------------------------- HELPER FUNCTIONS ------------------------------------>
 # -------------------------------------------------------------------------------------------------------->
+def capture_file_date(filename):
+    # set default date
+    date = datetime.date(2000, 1, 1)
+    
+    # try to obtain the date from the filename
+    try:
+        date = str_to_date(filename[13:21])
+    except:
+        print("\n")
+        print("An error with getting the date for " + filename + " has occurred.")
+        print("Proper filename format needed: PACKAGE_yyyymmdd")
+        print("\n")
+    
+    return date
+
+
+
+
 def str_to_date(str_date):
     # convert string date into date object
     date = datetime.date(int(str_date[0:4]), int(str_date[4:6]), int(str_date[6:8]))
@@ -129,9 +217,11 @@ def date_to_str(date):
 
 
 
-def error_reporter(building_log, merge_log):
+def display_errors():
+    global ERROR_LOGS
+    
     # print the error report for data building
-    for i in building_log:
+    for i in ERROR_LOGS[0]:
         print("\n") 
         print("Error while building data for:", i[0])
         print("Error from file:", i[1])
@@ -139,13 +229,46 @@ def error_reporter(building_log, merge_log):
         
     print("\nThis data was not build!", end='\n\n')
     
-    # print error for package
-    for i in merge_log:
+    # print error report for data merging
+    for i in ERROR_LOGS[1]:
         print('\n')
         print('Error with package:', i[0])
         print('For date:', i[1], end='\n\n')
         
     print("\nThis data was not merged!", end='\n\n')
+    
+    
+    
+
+def display_dataframes():
+    global DATAFRAMES
+    
+    print("Dataframe Aggregate:\n", DATAFRAMES[0], end='\n')
+    print("Dataframe Package:\n", DATAFRAMES[1], end='\n')
+    print("Dataframe History:\n", DATAFRAMES[2], end='\n')
+    
+    
+    
+    
+def update_dataframes():
+    pass
+    
+    
+    
+
+def update_error_logs(log, log_type):
+    global ERROR_LOGS
+    
+        
+    if log_type == 'build':
+        ERROR_LOGS[0] = log
+    elif log_type == 'merge':
+        ERROR_LOGS[1] = log
+    elif log_type == 'clean':
+        ERROR_LOGS[2] = log
+    else:
+        print('Error with updating logs.')
+    
 # -------------------------------------------------------------------------------------------------------->
 # ---------------------------------------------- END HELPER FUNCTIONS ------------------------------------>
 # -------------------------------------------------------------------------------------------------------->
@@ -556,6 +679,8 @@ def history_merge_pld(df_history, df_pld):
 def build_data():
     global FILES
     global START
+    global DATAFRAMES
+    global ERROR_LOGS
     
     # ------------------- initialize dataframes -------------------->
     print("\nInitializing dataframes...")
@@ -739,7 +864,18 @@ def build_data():
     print("Merging df_history and df_pld...")
     df_history, merge_error_log = history_merge_pld(df_history, df_pld)
     
-    return df_aggregate, df_package, df_history, build_error_log, merge_error_log
+    # store built dataframes in our global list
+    DATAFRAMES = [df_aggregate, df_package, df_history]
+    
+    # store the dataframes in a pickle files
+    # store_dataframes()
+    
+    # store the error logs in our global list
+    update_error_logs(build_error_log, 'build')
+    update_error_logs(merge_error_log, 'merge')
+    
+    # store the error logs in a pickle file
+    # store_error_logs()
 # -------------------------------------------------------------------------------------------------------->
 # ---------------------------------------------- END BUILD DATA ------------------------------------------>
 # -------------------------------------------------------------------------------------------------------->
@@ -748,66 +884,37 @@ def build_data():
 
 def main(args):
     # reference global variables
-    global PATH
+    global DATA_PATH
     global FILES
     global START
     global END
     
-    # console space
-    # print('\n')
     
     # check if custom file path is given
     if len(args) > 1:
-        PATH = args[1]
-        
-    # print("Data path:", "\'" + PATH + "\'", end="\n\n")
+        DATA_PATH = args[1]
+    
+    # check file paths
+    check_path()
     
     # attempt to get the data file list
-    FILES = capture_filenames(PATH)
+    capture_filenames()
  
     # check to see if we got the data files we need
     if not FILES:
-        print("No data was found. Preprocessing has ended.")
+        print("No data was found. Preprocessor has ended.")
         sys.exit()
     
     
     # attempt to get the range of dates from the files
     START = capture_file_date(FILES[0])
-    END = capture_file_date(FILES[len(FILES)-1])
-    # print("Start Date:", START)
-    # print("End Date:", END) 
+    END = capture_file_date(FILES[len(FILES)-1]) 
     start_string = "Start Date: " + str(START)
     end_string = "End Date: " + str(END)
     
     # prompt the main menu
     menu(start_string, end_string)
-    
-    
 
-    # start preprocessing data
-    """
-    while True:
-        process_inst = input("\n\nReady to build data. Countinue? [Y/N]: ")
-        if process_inst.upper() == "Y":
-            df_aggregate, df_package, df_history, build_error_log, merge_error_log = build_data()
-            
-            error_reporter(build_error_log, merge_error_log)
-            
-            df_aggregate.to_pickle('df_aggregate.pkl')
-            df_package.to_pickle('df_package.pkl')
-            df_history.to_pickle('df_history.pkl')
-            
-            print("Dataframe Aggregate:\n", df_aggregate, end='\n')
-            print("Dataframe Package:\n", df_package, end='\n')
-            print("Dataframe History:\n", df_history, end='\n')
-            
-            sys.exit()
-        elif process_inst.upper() == "N":
-            print("Ending Preprocessing. Goodbye.")
-            sys.exit()
-        else:
-            print("Invalid selection.")
-    """
     
 	
 
