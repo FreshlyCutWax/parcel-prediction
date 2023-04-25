@@ -120,7 +120,7 @@ def store_dataframes():
     # get the output path
     output_path = get_path('output')
     
-    # try and store the dataframes in a pickle file
+    # try to store the dataframes in a pickle file
     success = True
     try:
         path = os.path.join(output_path, 'df_aggregate.pkl')
@@ -147,19 +147,24 @@ def load_error_logs():
     # get our script directory
     script_path = get_path('script')
     
-    # open pickle file containing our error logs
-    # load build log and set to our global error log list, if it exists
-    path = os.path.join(script_path, 'build_errors.pkl')
-    if os.path.exists(path):
-        with open(path, 'rb') as handle:
-            ERROR_LOGS[0] = pickle.load(handle)
-    
-    # load merge log and set to our global error log list, if it exists
-    path = os.path.join(script_path, 'merge_errors.pkl')
-    if os.path.exists(path):
-        with open(path, 'rb') as handle:
-            ERROR_LOGS[1] = pickle.load(handle)
-
+    # try to open pickle file containing our error logs
+    success = True
+    try:
+        # load build log and set to our global error log list, if it exists
+        path = os.path.join(script_path, 'build_errors.pkl')
+        if os.path.exists(path):
+            with open(path, 'rb') as handle:
+                ERROR_LOGS[0] = pickle.load(handle)
+        
+        # load merge log and set to our global error log list, if it exists
+        path = os.path.join(script_path, 'merge_errors.pkl')
+        if os.path.exists(path):
+            with open(path, 'rb') as handle:
+                ERROR_LOGS[1] = pickle.load(handle)
+    except:
+        success = False
+        
+    return success
     
     
     
@@ -171,18 +176,24 @@ def store_error_logs():
     build_log = get_error_log('build')
     merge_log = get_error_log('merge')
     
-    # save logs to a pickle file
-    # if there are build errors logged, save them to our script directory
-    if len(build_log) != 0:
-        path = os.path.join(script_path, 'build_errors.pkl')
-        with open(path, 'wb') as handle:               
-            pickle.dump(build_log, handle)
-    
-    # if there are merge errors logged, save them to our script directory
-    if len(merge_log) != 0:
-        path = os.path.join(script_path, 'merge_errors.pkl')
-        with open(path, 'wb') as handle:               
-            pickle.dump(merge_log, handle)
+    # try to save logs to a pickle file
+    success = True
+    try:
+        # if there are build errors logged, save them to our script directory
+        if len(build_log) != 0:
+            path = os.path.join(script_path, 'build_errors.pkl')
+            with open(path, 'wb') as handle:               
+                pickle.dump(build_log, handle)
+        
+        # if there are merge errors logged, save them to our script directory
+        if len(merge_log) != 0:
+            path = os.path.join(script_path, 'merge_errors.pkl')
+            with open(path, 'wb') as handle:               
+                pickle.dump(merge_log, handle)
+    except:
+        success = False
+        
+    return success
 # -------------------------------------------------------------------------------------------------------->
 # ---------------------------------------------- END FILE FUNCTIONS -------------------------------------->
 # -------------------------------------------------------------------------------------------------------->
@@ -985,10 +996,7 @@ def history_merge_pld(df_history, df_pld):
                 pkg_error = True
                 
                 # log error
-                merge_error_log.append([i, j])
-                
-    
-    print("\n\nMerging complete.\n\n")
+                merge_error_log.append([i, j])                
     # --------------------------------------- END MERGING CODE ------------------------------>
     
     # ----------------------------- CLEANUP AND TYPE CASTING -------------------------------->
@@ -1041,7 +1049,7 @@ def build_data():
     df_history = make_history_dataframe(xlsx, 'HIST')
     df_pld = make_pld_dataframe(xlsx, start_date)
     
-    print("Dataframe initialization complete.")
+    print("Dataframe initialization complete.", end='\n\n')
     # ------------------- initialization complete ------------------>
     
     # list that hold errors for dataframe building
@@ -1069,7 +1077,7 @@ def build_data():
     df_aggregate = df_aggregate.reset_index(drop=True)
     
     # completion message
-    print("Aggregate dataframe complete.")
+    print("Aggregate dataframe complete.", end='\n\n')
     # ----------------- aggregate dataframe complete --------------->
     
     
@@ -1077,7 +1085,7 @@ def build_data():
     # loop over the rest of the files and append package data to the dataframe
     # only triggers when there is more than one file to read!!
     if len(files) > 1:
-        print("\nBuilding package dataframe...")
+        print("Building package dataframe...")
         # process for PLD data
         pbar = tqdm(files[1:])
         pbar.set_description('SVC')
@@ -1121,7 +1129,7 @@ def build_data():
     df_package = df_package.reset_index(drop=True)
     
     # completion message
-    print("Package dataframe complete.")
+    print("Package dataframe complete.", end='\n\n')
     # ----------------- package dataframe complete ----------------->
     
     
@@ -1129,7 +1137,7 @@ def build_data():
     # loop over the rest of the files and append history data to the dataframe
     # only triggers when there is more than one file to read!!
     if len(files) > 1:
-        print("\nBuilding history dataframe...")
+        print("Building history dataframe...")
         pbar = tqdm(files[1:])
         pbar.set_description('HIST')
         for file in pbar:
@@ -1173,7 +1181,7 @@ def build_data():
     df_history = index_history(df_history)
     
     # completion message
-    print("History dataframe complete.")
+    print("History dataframe complete.", end='\n\n')
     # ----------------- history dataframe complete ----------------->
     
     
@@ -1181,7 +1189,7 @@ def build_data():
     # loop over the rest of the files and append history data to the dataframe
     # only triggers when there is more than one file to read!!
     if len(files) > 1:
-        print("\nBuilding PLD dataframe...")
+        print("Building PLD dataframe...")
         for file in tqdm(files[1:]):
             try:
                 # load Excel file and file date
@@ -1203,31 +1211,55 @@ def build_data():
     df_pld = df_pld.reset_index(drop=True)
     
     # completion message
-    print("PLD dataframe complete.")
+    print("PLD dataframe complete.", end='\n\n')
     # ----------------- PLD dataframe complete --------------------->
     
     
     # !!! MERGE PLD WITH HISTORY !!!
     print("Merging df_history and df_pld...")
     df_history, merge_error_log = history_merge_pld(df_history, df_pld)
+    print("Merging complete.", end='\n\n')
     
+    # !!! BUILDING DATA IS NOW COMPLETE !!!
+    
+    # ----------------- Finishing Processes ------------------------>
     # store built dataframes in our global list
     set_dataframe(df_aggregate, 'aggregate')
     set_dataframe(df_package, 'package')
     set_dataframe(df_history, 'history')
     
-    # store the dataframes in a pickle files
-    storage_success = store_dataframes()
+    # save the dataframes in a file
+    df_save_success = store_dataframes()
+    
+    # Get the error counts
+    build_error_count = len(build_error_log)
+    merge_error_count = len(merge_error_log)
     
     # store the error logs in our global list
     set_error_log(build_error_log, 'build')
     set_error_log(merge_error_log, 'merge')
+            
+    # save the errors in a file
+    err_save_success = store_error_logs()
     
-    # store the error logs in a pickle file
-    # store_error_logs()
+    # prompt user with success and error counts
+    print("----------------------------------")
+    print("----------BUILD ERRORS------------")
+    print("----------------------------------")
+    print("Build errors:", build_error_count)
+    print("Merge errors:", merge_error_count)
+    print("\n\n")
     
-    print("Dataframes successfully saved:", storage_success)
-    input("\nPress enter to continue...")
+    print("----------------------------------")
+    print("-------DATA BUILD SUCCESS---------")
+    print("----------------------------------")
+    print("Dataframes have been built.")
+    print("Dataframes successfully saved:", df_save_success)
+    print("Error logs successfully saved:", err_save_success)
+    print("\n\n")
+    
+    # hold screen until pressing enter
+    input("Press enter to continue...")
 # -------------------------------------------------------------------------------------------------------->
 # ---------------------------------------------- END BUILD DATA ------------------------------------------>
 # -------------------------------------------------------------------------------------------------------->
@@ -1270,7 +1302,12 @@ def main(args):
  
     # check to see if we got the data files we need
     if not files:
-        print("No data was found. Preprocessor has ended.")
+        print("No data was found. Preprocessor could not start.", end='\n\n')
+        
+        # get the path and show to user
+        data_path = get_path('data')
+        print("The appropriate directories have now been created.")
+        print("Please add your data to the current data directory:", data_path)
         sys.exit()
     
     
