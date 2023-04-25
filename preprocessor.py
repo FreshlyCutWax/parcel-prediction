@@ -256,14 +256,63 @@ def display_dataframes():
 # -------------------------------------------------------------------------------------------------------->
 # ---------------------------------------------- GETTERS AND SETTERS ------------------------------------->
 # -------------------------------------------------------------------------------------------------------->
-def update_path():
-    pass
+def update_path(path, path_type):
+    """
+    update_path(path, path_type) -> success (bool)
+    
+    args:
+    path (string) -> file path to data
+    path_type (string) -> 'data', 'output', 'script'   
+    
+    Desc:
+    Update the value for a specified path in the directory.
+    """
+    global DATA_PATH
+    global OUTPUT_PATH
+    global SCRIPT_PATH
+    
+    success = True
+    if path_type == 'data':
+        DATA_PATH = path
+    elif path_type == 'output':
+        OUTPUT_PATH = path
+    elif path_type == 'script':
+        SCRIPT_PATH = path
+    else:
+        success = False
+    
+    return success
     
     
     
     
-def get_path():
-    pass
+def get_path(path_type):
+    """
+    get_path(path_type) -> path (string)
+    
+    args:
+    path_type (string) -> 'data', 'output', 'script'   
+    
+    Desc:
+    Get the value for a specified path in the directory.
+    """
+    global DATA_PATH
+    global OUTPUT_PATH
+    global SCRIPT_PATH
+    
+    # match path type and set to return value
+    # empty if incorrect path type
+    path = ''
+    if path_type == 'data':
+        path = DATA_PATH
+    elif path_type == 'output':
+        path = OUTPUT_PATH
+    elif path_type == 'script':
+        path = SCRIPT_PATH
+    else:
+        path = ''
+    
+    return path
     
     
     
