@@ -144,17 +144,45 @@ def store_dataframes():
 
 
 def load_error_logs():
-    global ERROR_LOGS
-    pass
+    # get our script directory
+    script_path = get_path('script')
+    
+    # open pickle file containing our error logs
+    # load build log and set to our global error log list, if it exists
+    path = os.path.join(script_path, 'build_errors.pkl')
+    if os.path.exists(path):
+        with open(path, 'rb') as handle:
+            ERROR_LOGS[0] = pickle.load(handle)
+    
+    # load merge log and set to our global error log list, if it exists
+    path = os.path.join(script_path, 'merge_errors.pkl')
+    if os.path.exists(path):
+        with open(path, 'rb') as handle:
+            ERROR_LOGS[1] = pickle.load(handle)
+
     
     
     
 def store_error_logs():
-    global ERROR_LOGS
+    # get our script directory
+    script_path = get_path('script')
+
+    # get our error logs
+    build_log = get_error_log('build')
+    merge_log = get_error_log('merge')
     
-    with open('errors.pkl', 'wb') as handle:   
-        pickle.dump(ERROR_LOGS, handle)
-    pass
+    # save logs to a pickle file
+    # if there are build errors logged, save them to our script directory
+    if len(build_log) != 0:
+        path = os.path.join(script_path, 'build_errors.pkl')
+        with open(path, 'wb') as handle:               
+            pickle.dump(build_log, handle)
+    
+    # if there are merge errors logged, save them to our script directory
+    if len(merge_log) != 0:
+        path = os.path.join(script_path, 'merge_errors.pkl')
+        with open(path, 'wb') as handle:               
+            pickle.dump(merge_log, handle)
 # -------------------------------------------------------------------------------------------------------->
 # ---------------------------------------------- END FILE FUNCTIONS -------------------------------------->
 # -------------------------------------------------------------------------------------------------------->
@@ -553,7 +581,7 @@ def get_dataframe(df_type):
     
     
 
-def set_error_logs(log, log_type):
+def set_error_log(log, log_type):
     """
     set_error_logs(log, log_type) -> None
     
@@ -582,7 +610,7 @@ def set_error_logs(log, log_type):
         
         
         
-def get_error_logs(log_type):
+def get_error_log(log_type):
     """
     get_error_logs(log, log_type) -> log (tuple)
     
@@ -1192,8 +1220,8 @@ def build_data():
     storage_success = store_dataframes()
     
     # store the error logs in our global list
-    set_error_logs(build_error_log, 'build')
-    set_error_logs(merge_error_log, 'merge')
+    set_error_log(build_error_log, 'build')
+    set_error_log(merge_error_log, 'merge')
     
     # store the error logs in a pickle file
     # store_error_logs()
@@ -1206,7 +1234,6 @@ def build_data():
 
 
 
-
 # -------------------------------------------------------------------------------------------------------->
 # ------------------------------------------ CLEANING FUNCTIONS ------------------------------------------>
 # -------------------------------------------------------------------------------------------------------->
@@ -1215,6 +1242,7 @@ def build_data():
 # -------------------------------------------------------------------------------------------------------->
 # -------------------------------------- END CLEANING FUNCTIONS ------------------------------------------>
 # -------------------------------------------------------------------------------------------------------->
+
 
 
 # -------------------------------------------------------------------------------------------------------->
