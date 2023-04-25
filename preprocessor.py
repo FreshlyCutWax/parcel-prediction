@@ -734,30 +734,6 @@ def make_history_dataframe(xlsx_file, which):
     df = df.merge(driver_split, how='left', left_index=True, right_index=True)
     # ------------------------- DRIVER CODES COMPLETE ---------------------->
     
-    
-    # ------------------------- HISTORY ENTRY ORDERING --------------------->
-    """
-    # add empty column for the order of events
-    array_order = np.full((len(df)), 0, dtype='int')
-    df.insert(loc=0, column='Order', value=array_order)
-    
-    # get unique package IDs
-    pkgs = pd.unique(df['Package ID'])
-    
-    # progress bar
-    pbar = tqdm(pkgs)
-    pbar.set_description("Event indexing")
-    
-    # loop over individual package IDs and index history entries
-    for i in pbar:
-        df_pkg = df[df['Package ID'] == i]
-        pkg_indexer = 1
-        for j in df_pkg.index:
-            df.at[j, 'Order'] = pkg_indexer
-            pkg_indexer += 1  
-    """
-    # ------------------------- ENTRY ORDERING COMPLETE --------------------->
-    
     # reorder and rename column names
     column_order = ['Package ID', 'Date', 'DoW', 'Type', 'Station Code', 'Driver Code', 'Reason']
     df = df[column_order]
