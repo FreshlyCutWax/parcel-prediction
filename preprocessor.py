@@ -66,8 +66,7 @@ def check_path():
 
 
 
-def capture_filenames():
-    
+def capture_filenames():   
     # get the path for the data
     data_path = get_path('data')
     
@@ -85,9 +84,7 @@ def capture_filenames():
 
 
 
-def load_dataframes():
-    global DATAFRAMES
-    
+def load_dataframes():    
     # get the output path
     output_path = get_path('output')
     
@@ -97,19 +94,21 @@ def load_dataframes():
         # get aggregate dataframe
         name = os.path.join(output_path, 'df_aggregate.pkl')
         if os.path.isfile(name):
-            DATAFRAMES.append(pd.read_pickle(name))
+            df = pd.read_pickle(name)
+            set_dataframe(df, 'aggregate')
         
         # get package dataframe
         name = os.path.join(output_path, 'df_package.pkl')
         if os.path.isfile(name):
-            DATAFRAMES.append(pd.read_pickle(name))
+            df = pd.read_pickle(name)
+            set_dataframe(df, 'package')
         
         # get history dataframe
         name = os.path.join(output_path, 'df_history.pkl')
         if os.path.isfile(name):
-            DATAFRAMES.append(pd.read_pickle(name))    
+            df = pd.read_pickle(name)
+            set_dataframe(df, 'history')
     except:
-        DATAFRAMES = []
         success = False
         
     return success
@@ -117,9 +116,7 @@ def load_dataframes():
 
 
 
-def store_dataframes():
-    global DATAFRAMES
-    
+def store_dataframes(): 
     # get the output path
     output_path = get_path('output')
     
@@ -127,13 +124,16 @@ def store_dataframes():
     success = True
     try:
         path = os.path.join(output_path, 'df_aggregate.pkl')
-        DATAFRAMES[0].to_pickle(path)
+        df = get_dataframe('aggregate')
+        df.to_pickle(path)
         
         path = os.path.join(output_path, 'df_package.pkl')
-        DATAFRAMES[1].to_pickle(path)
+        df = get_dataframe('package')
+        df.to_pickle(path)
         
         path = os.path.join(output_path, 'df_history.pkl')
-        DATAFRAMES[2].to_pickle(path)
+        df = get_dataframe('history')
+        df.to_pickle(path)
     except:
         success = False
         
@@ -249,11 +249,16 @@ def display_errors():
     
 
 def display_dataframes():
-    global DATAFRAMES
+    # get the dataframes
+    df_aggregate = get_dataframe('aggregate')
+    df_package = get_dataframe('package')
+    df_history = get_dataframe('history')
     
-    print("Dataframe Aggregate:\n", DATAFRAMES[0], end='\n')
-    print("Dataframe Package:\n", DATAFRAMES[1], end='\n')
-    print("Dataframe History:\n", DATAFRAMES[2], end='\n')   
+    # display the dataframes on the console
+    print("Dataframe Aggregate:\n", df_aggregate, end='\n')
+    print("Dataframe Package:\n", df_package, end='\n')
+    print("Dataframe History:\n", df_history, end='\n') 
+    input("\nPress enter to continue...")
 # -------------------------------------------------------------------------------------------------------->
 # ---------------------------------------------- END HELPER FUNCTIONS ------------------------------------>
 # -------------------------------------------------------------------------------------------------------->
@@ -523,7 +528,7 @@ def get_dataframe(df_type):
     get_dataframes() -> dataframe (dataframe object)
     
     args:
-    df_type (string) -> 'aggregate', 'package', 'history'
+    df_type (string) -> 'aggregate', 'package', or 'history'
     
     returns:
     dataframe (datetime object) -> selected dataframe
@@ -973,7 +978,6 @@ def history_merge_pld(df_history, df_pld):
 # -------------------------------------------------- BUILD DATA ------------------------------------------>
 # -------------------------------------------------------------------------------------------------------->
 def build_data():
-    global DATAFRAMES
     global ERROR_LOGS
     
     # ------------------- initialize dataframes -------------------->
@@ -1165,10 +1169,12 @@ def build_data():
     df_history, merge_error_log = history_merge_pld(df_history, df_pld)
     
     # store built dataframes in our global list
-    DATAFRAMES = [df_aggregate, df_package, df_history]
+    set_dataframe(df_aggregate, 'aggregate')
+    set_dataframe(df_package, 'package')
+    set_dataframe(df_history, 'history')
     
     # store the dataframes in a pickle files
-    storage = store_dataframes()
+    storage_success = store_dataframes()
     
     # store the error logs in our global list
     update_error_logs(build_error_log, 'build')
@@ -1177,7 +1183,8 @@ def build_data():
     # store the error logs in a pickle file
     # store_error_logs()
     
-    print("Dataframes successfully saved:", storage)
+    print("Dataframes successfully saved:", storage_success)
+    input("\nPress enter to continue...")
 # -------------------------------------------------------------------------------------------------------->
 # ---------------------------------------------- END BUILD DATA ------------------------------------------>
 # -------------------------------------------------------------------------------------------------------->
