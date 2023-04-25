@@ -553,7 +553,20 @@ def get_dataframe(df_type):
     
     
 
-def update_error_logs(log, log_type):
+def set_error_logs(log, log_type):
+    """
+    set_error_logs(log, log_type) -> None
+    
+    args:
+    log (list) -> strings and dates
+    log_type (string) -> 'build', 'merge', or 'clean'
+    
+    returns:
+    None
+    
+    Desc:
+    Set the global list that stores the error logs.
+    """
     global ERROR_LOGS
     
         
@@ -564,12 +577,38 @@ def update_error_logs(log, log_type):
     elif log_type == 'clean':
         ERROR_LOGS[2] = log
     else:
-        print('Error with updating logs.')
+        pass
         
         
         
         
-def get_error_logs():
+def get_error_logs(log_type):
+    """
+    get_error_logs(log, log_type) -> log (tuple)
+    
+    args:
+    log_type (string) -> 'build', 'merge', or 'clean'
+    
+    returns:
+    log (tuple) -> selected log
+    
+    Desc:
+    Get an error log from the global list that stores the error logs.
+    """
+    global ERROR_LOGS
+    
+    # get the specified error log from the global list
+    log = []
+    if log_type == 'build':
+        log = ERROR_LOGS[0]
+    elif log_type == 'merge':
+        log =  ERROR_LOGS[1]
+    elif log_type == 'clean':
+        log = ERROR_LOGS[2]
+    else:
+        log = []
+        
+    return log
     pass
 # -------------------------------------------------------------------------------------------------------->
 # ------------------------------------------- END GETTERS AND SETTERS ------------------------------------>
@@ -1153,8 +1192,8 @@ def build_data():
     storage_success = store_dataframes()
     
     # store the error logs in our global list
-    update_error_logs(build_error_log, 'build')
-    update_error_logs(merge_error_log, 'merge')
+    set_error_logs(build_error_log, 'build')
+    set_error_logs(merge_error_log, 'merge')
     
     # store the error logs in a pickle file
     # store_error_logs()
