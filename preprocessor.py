@@ -67,7 +67,6 @@ def check_path():
 
 
 def capture_filenames():
-    global FILES
     
     # get the path for the data
     data_path = get_path('data')
@@ -79,7 +78,7 @@ def capture_filenames():
             name = os.path.join(data_path, file)
             
             if os.path.isfile(name):
-                FILES.append(name)
+                append_filename(name)
     except:
         print("An error has occurred with getting the filenames.")
 
@@ -336,7 +335,7 @@ def set_filenames(file_list):
     set_filenames(file_list) -> None
     
     args:
-    file_list (string) -> list of filenames
+    file_list (string list) -> list of filenames
     
     returns:
     None
@@ -377,7 +376,7 @@ def append_filename(filename):
     
 def get_filenames():
     """
-    get_filename() -> file_list (string)
+    get_filename() -> file_list (string tuple)
     
     args:
     None
@@ -391,31 +390,102 @@ def get_filenames():
     global FILES
     
     # return the global filename list
-    return FILES
+    file_list = tuple(FILES)
+    return file_list
     
     
     
     
-def update_start_date():
-    pass
+def set_start_date(date):
+    """
+    set_start_date(date) -> None
+    
+    args:
+    date (datetime object) -> date yyyy-mm-dd
+    
+    returns:
+    None
+    
+    Desc:
+    Set the global start date for the file list.
+    """
+    global START
+    
+    # if given date is a string, convert to date object
+    if type(date) == str:
+        date = str_to_date(date)
+    
+    # set global start variable
+    START = date
     
     
     
     
 def get_start_date():
-    pass
+    """
+    get_start_date() -> start_date (datetime object)
+    
+    args:
+    None
+    
+    returns:
+    start_date (datetime object) -> date yyyy-mm-dd
+    
+    Desc:
+    Get the global start date for the file list.
+    """
+    global START
+    
+    # return the global start date
+    start_date = START
+    return start_date
     
     
     
  
-def update_end_date():
-    pass
+def set_end_date(date):
+    """
+    set_end_date(date) -> None
+    
+    args:
+    date (datetime object) -> date yyyy-mm-dd
+    
+    returns:
+    None
+    
+    Desc:
+    Set the global end date for the file list.
+    """
+    global END
+    
+    # if given date is a string, convert to date object
+    if type(date) == str:
+        date = str_to_date(date)
+    
+    # set global start variable
+    END = date
     
     
     
     
 def get_end_date():
-    pass
+    """
+    get_end_date() -> end_date (datetime object)
+    
+    args:
+    None
+    
+    returns:
+    end_date (datetime object) -> date yyyy-mm-dd
+    
+    Desc:
+    Get the global end date for the file list.
+    """
+    global END
+    
+    # return the global end date
+    end_date = END
+    return end_date
 
     
     
@@ -857,7 +927,6 @@ def history_merge_pld(df_history, df_pld):
 # -------------------------------------------------- BUILD DATA ------------------------------------------>
 # -------------------------------------------------------------------------------------------------------->
 def build_data():
-    global FILES
     global START
     global DATAFRAMES
     global ERROR_LOGS
@@ -865,8 +934,11 @@ def build_data():
     # ------------------- initialize dataframes -------------------->
     print("\nInitializing dataframes...")
     
+    # get filenames
+    files = get_filenames()
+    
     # load Excel Workbook
-    xlsx = pd.ExcelFile(FILES[0])
+    xlsx = pd.ExcelFile(files[0])
     
     # initialize all dataframes
     df_aggregate = make_aggregate_dataframe(xlsx, START)
@@ -882,9 +954,9 @@ def build_data():
     # ---------------- build the aggregate dataframe --------------->   
     # loop over the rest of the files and append aggregate data to the dataframe
     # only triggers when there is more than one file to read!!
-    if len(FILES) > 1:
+    if len(files) > 1:
         print("\nBuilding aggregate dataframe...")
-        for file in tqdm(FILES[1:]):
+        for file in tqdm(files[1:]):
             try:
                 # load Excel file and file date
                 xlsx = pd.ExcelFile(file)
@@ -909,10 +981,10 @@ def build_data():
     # ----------------- build the package dataframe ---------------->
     # loop over the rest of the files and append package data to the dataframe
     # only triggers when there is more than one file to read!!
-    if len(FILES) > 1:
+    if len(files) > 1:
         print("\nBuilding package dataframe...")
         # process for PLD data
-        pbar = tqdm(FILES[1:])
+        pbar = tqdm(files[1:])
         pbar.set_description('SVC')
         for file in pbar:
             try:
@@ -929,7 +1001,7 @@ def build_data():
                     build_error_log.append([df_name, file, err])
                     
         # process for 85 data
-        pbar = tqdm(FILES[1:])
+        pbar = tqdm(files[1:])
         pbar.set_description('85_SVC')
         for file in pbar:     
             try:
@@ -961,9 +1033,9 @@ def build_data():
     # ----------------- build the history dataframe ---------------->   
     # loop over the rest of the files and append history data to the dataframe
     # only triggers when there is more than one file to read!!
-    if len(FILES) > 1:
+    if len(files) > 1:
         print("\nBuilding history dataframe...")
-        pbar = tqdm(FILES[1:])
+        pbar = tqdm(files[1:])
         pbar.set_description('HIST')
         for file in pbar:
             try:
@@ -980,7 +1052,7 @@ def build_data():
                     build_error_log.append([df_name, file, err])
                     
         # process for 85 data
-        pbar = tqdm(FILES[1:])
+        pbar = tqdm(files[1:])
         pbar.set_description('85_HIST')
         for file in pbar:     
             try:
@@ -1013,9 +1085,9 @@ def build_data():
     # ----------------- build the PLD dataframe -------------------->
     # loop over the rest of the files and append history data to the dataframe
     # only triggers when there is more than one file to read!!
-    if len(FILES) > 1:
+    if len(files) > 1:
         print("\nBuilding PLD dataframe...")
-        for file in tqdm(FILES[1:]):
+        for file in tqdm(files[1:]):
             try:
                 # load Excel file and file date
                 xlsx = pd.ExcelFile(file)
@@ -1066,7 +1138,6 @@ def build_data():
 
 def main(args):
     # reference global variables
-    global FILES
     global START
     global END
     
@@ -1078,18 +1149,21 @@ def main(args):
     # check file paths
     check_path()
     
-    # attempt to get the data file list
+    # attempt to capture a file list from directory
     capture_filenames()
+    
+    # get the file list
+    files = get_filenames()
  
     # check to see if we got the data files we need
-    if not FILES:
+    if not files:
         print("No data was found. Preprocessor has ended.")
         sys.exit()
     
     
     # attempt to get the range of dates from the files
-    START = capture_file_date(FILES[0])
-    END = capture_file_date(FILES[len(FILES)-1]) 
+    START = capture_file_date(files[0])
+    END = capture_file_date(files[len(files)-1]) 
     start_string = "Start Date: " + str(START)
     end_string = "End Date: " + str(END)
     
