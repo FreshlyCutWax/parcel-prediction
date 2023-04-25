@@ -35,8 +35,8 @@ SCRIPT_PATH = "preprocessor/"       # path for error logs and such
 FILES = []                          # File list
 START = datetime.date(2000, 1, 1)   # Start date in date range
 END = datetime.date(2000, 1, 1)     # End date in date range
-DATAFRAMES = [[], [], []]                     # dataframes [df_aggregate, df_package, df_history]
-ERROR_LOGS = [[], [], []]                     # Error logs [build_errors, merge_errors, clean_errors]
+DATAFRAMES = [[], [], []]           # dataframes [df_aggregate, df_package, df_history]
+ERROR_LOGS = [[], [], []]           # Error logs [build_errors, merge_errors, clean_errors]
 
 # ignore warnings
 warnings.filterwarnings('ignore')
@@ -92,7 +92,7 @@ def capture_filenames():
 
 
 
-def get_dataframes():
+def load_dataframes():
     global DATAFRAMES
     global OUTPUT_PATH
     
@@ -136,7 +136,7 @@ def store_dataframes():
 
 
 
-def get_error_logs():
+def load_error_logs():
     global ERROR_LOGS
     pass
     
@@ -245,12 +245,72 @@ def display_dataframes():
     
     print("Dataframe Aggregate:\n", DATAFRAMES[0], end='\n')
     print("Dataframe Package:\n", DATAFRAMES[1], end='\n')
-    print("Dataframe History:\n", DATAFRAMES[2], end='\n')
+    print("Dataframe History:\n", DATAFRAMES[2], end='\n')   
+# -------------------------------------------------------------------------------------------------------->
+# ---------------------------------------------- END HELPER FUNCTIONS ------------------------------------>
+# -------------------------------------------------------------------------------------------------------->
+
+
+
+
+# -------------------------------------------------------------------------------------------------------->
+# ---------------------------------------------- GETTERS AND SETTERS ------------------------------------->
+# -------------------------------------------------------------------------------------------------------->
+def update_path():
+    pass
     
+    
+    
+    
+def get_path():
+    pass
+    
+    
+    
+    
+def update_filenames():
+    pass
+    
+    
+    
+    
+def get_filenames():
+    pass
+    
+    
+    
+    
+def update_start_date():
+    pass
+    
+    
+    
+    
+def get_start_date():
+    pass
+    
+    
+    
+ 
+def update_end_date():
+    pass
+    
+    
+    
+    
+def get_end_date():
+    pass
+
     
     
     
 def update_dataframes():
+    pass
+    
+    
+    
+    
+def get_dataframes():
     pass
     
     
@@ -268,11 +328,15 @@ def update_error_logs(log, log_type):
         ERROR_LOGS[2] = log
     else:
         print('Error with updating logs.')
-    
+        
+        
+        
+        
+def get_error_logs():
+    pass
 # -------------------------------------------------------------------------------------------------------->
-# ---------------------------------------------- END HELPER FUNCTIONS ------------------------------------>
+# ------------------------------------------- END GETTERS AND SETTERS ------------------------------------>
 # -------------------------------------------------------------------------------------------------------->
-
 
 # -------------------------------------------------------------------------------------------------------->
 # -------------------------------------------------- DATAFRAME FUNCTIONS --------------------------------->
