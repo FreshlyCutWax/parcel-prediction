@@ -15,6 +15,7 @@ import sys
 import os
 import datetime
 import pickle
+import time
 
 # progress bar
 from tqdm import tqdm
@@ -46,38 +47,36 @@ warnings.filterwarnings('ignore')
 # -------------------------------------------------- FILE FUNCTIONS -------------------------------------->
 # -------------------------------------------------------------------------------------------------------->
 def check_path():
-    global DATA_PATH
-    global OUTPUT_PATH
-    global SCRIPT_PATH
+    # get path values
+    data_path = get_path('data')
+    output_path = get_path('output')
+    script_path = get_path('script')
     
-    if not os.path.exists(DATA_PATH):
-        # if no path for the data, create path and warn user
-        os.makedirs(DATA_PATH)
-        print("No file directory for the data were found.") 
-        print("Data file directory \'" + DATA_PATH + "\' has been created.")
-        
-    if not os.path.exists(OUTPUT_PATH):
-        # if no path for the output, create path and warn user
-        os.makedirs(OUTPUT_PATH)
-        print("No file directory for the output were found.") 
-        print("Output file directory \'" + OUTPUT_PATH + "\' has been created.")
-        
-    if not os.path.exists(SCRIPT_PATH):
-        # if no path for the output, create path and warn user
-        os.makedirs(SCRIPT_PATH)
-        print("No file directory for the preprocessor were found.") 
-        print("Preprocessor file directory \'" + SCRIPT_PATH + "\' has been created.")
+    # if no path for the data files, create path
+    if not os.path.exists(data_path):      
+        os.makedirs(data_path)
+     
+    # if no path for the output files, create path
+    if not os.path.exists(output_path):        
+        os.makedirs(output_path)
+    
+    # if no path for the script files, create path    
+    if not os.path.exists(script_path):        
+        os.makedirs(script_path)
 
 
 
 def capture_filenames():
-    global DATA_PATH
     global FILES
+    
+    # get the path for the data
+    data_path = get_path('data')
+    
     
     # if the data path exists, try and get the filenames
     try:
-        for file in os.listdir(DATA_PATH):
-            name = os.path.join(DATA_PATH, file)
+        for file in os.listdir(data_path):
+            name = os.path.join(data_path, file)
             
             if os.path.isfile(name):
                 FILES.append(name)
@@ -87,50 +86,58 @@ def capture_filenames():
 
 
 
-
-
-
-
-
 def load_dataframes():
     global DATAFRAMES
-    global OUTPUT_PATH
+    
+    # get the output path
+    output_path = get_path('output')
     
     # try to read stored data
+    success = True
     try:
         # get aggregate dataframe
-        name = os.path.join(OUTPUT_PATH, 'df_aggregate.pkl')
+        name = os.path.join(output_path, 'df_aggregate.pkl')
         if os.path.isfile(name):
             DATAFRAMES.append(pd.read_pickle(name))
         
         # get package dataframe
-        name = os.path.join(OUTPUT_PATH, 'df_package.pkl')
+        name = os.path.join(output_path, 'df_package.pkl')
         if os.path.isfile(name):
             DATAFRAMES.append(pd.read_pickle(name))
         
         # get history dataframe
-        name = os.path.join(OUTPUT_PATH, 'df_history.pkl')
+        name = os.path.join(output_path, 'df_history.pkl')
         if os.path.isfile(name):
             DATAFRAMES.append(pd.read_pickle(name))    
     except:
         DATAFRAMES = []
-        print("No compiled dataframe files were found.")
+        success = False
+        
+    return success
     
 
 
 def store_dataframes():
     global DATAFRAMES
-    global OUTPUT_PATH
     
+    # get the output path
+    output_path = get_path('output')
+    
+    # try and store the dataframes in a pickle file
+    success = True
     try:
-        DATAFRAMES[0].to_pickle('df_aggregate.pkl')
-        DATAFRAMES[1].to_pickle('df_package.pkl')
-        DATAFRAMES[2].to_pickle('df_history.pkl')
+        path = os.path.join(output_path, 'df_aggregate.pkl')
+        DATAFRAMES[0].to_pickle(path)
         
-        print("Dataframes have now been saved.")
+        path = os.path.join(output_path, 'df_package.pkl')
+        DATAFRAMES[1].to_pickle(path)
+        
+        path = os.path.join(output_path, 'df_history.pkl')
+        DATAFRAMES[2].to_pickle(path)
     except:
-        print("An error has occurred.")
-        print("No dataframes have been saved.")
+        success = False
+        
+    return success
     
 
 
@@ -318,6 +325,12 @@ def get_path(path_type):
     
     
 def update_filenames():
+    pass
+    
+    
+    
+    
+def append_filename(file):
     pass
     
     
@@ -981,7 +994,7 @@ def build_data():
     DATAFRAMES = [df_aggregate, df_package, df_history]
     
     # store the dataframes in a pickle files
-    # store_dataframes()
+    storage = store_dataframes()
     
     # store the error logs in our global list
     update_error_logs(build_error_log, 'build')
@@ -989,6 +1002,8 @@ def build_data():
     
     # store the error logs in a pickle file
     # store_error_logs()
+    
+    print("Dataframes successfully saved:", storage)
 # -------------------------------------------------------------------------------------------------------->
 # ---------------------------------------------- END BUILD DATA ------------------------------------------>
 # -------------------------------------------------------------------------------------------------------->
