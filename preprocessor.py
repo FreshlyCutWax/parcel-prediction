@@ -209,16 +209,13 @@ def store_error_logs():
         if len(build_log) != 0:
             with open(path, 'wb') as handle:               
                 pickle.dump(build_log, handle)
-        else:
-            os.remove(path)
         
         # if there are merge errors logged, save them to our script directory
         path = os.path.join(script_path, 'merge_errors.pkl')
         if len(merge_log) != 0:          
             with open(path, 'wb') as handle:               
                 pickle.dump(merge_log, handle)
-        else:
-            os.remove(path)
+                
     else:
         success = False
         
