@@ -32,7 +32,7 @@ import warnings
 #  Global Variables
 DATA_PATH = "data/"                 # Path to data
 OUTPUT_PATH = "compiled_data/"      # path for compiled data (dataframes)
-SCRIPT_PATH = "preprocessor/"       # path for error logs and such
+SCRIPT_PATH = "pre_data/"           # path for error logs and such
 FILES = []                          # File list
 START = datetime.date(2000, 1, 1)   # Start date in date range
 END = datetime.date(2000, 1, 1)     # End date in date range
@@ -88,28 +88,38 @@ def load_dataframes():
     # get the output path
     output_path = get_path('output')
     
-    # try to read stored data
+    # if file load is successful or not
     success = True
-    try:
-        # get aggregate dataframe
-        name = os.path.join(output_path, 'df_aggregate.pkl')
-        if os.path.isfile(name):
-            df = pd.read_pickle(name)
-            set_dataframe(df, 'aggregate')
-        
-        # get package dataframe
-        name = os.path.join(output_path, 'df_package.pkl')
-        if os.path.isfile(name):
-            df = pd.read_pickle(name)
-            set_dataframe(df, 'package')
-        
-        # get history dataframe
-        name = os.path.join(output_path, 'df_history.pkl')
-        if os.path.isfile(name):
-            df = pd.read_pickle(name)
-            set_dataframe(df, 'history')
-    except:
+    
+    # get aggregate dataframe
+    path = os.path.join(output_path, 'df_aggregate.pkl')
+    if os.path.isfile(path):
+        df = pd.read_pickle(path)
+        set_dataframe(df, 'aggregate')
+    else:
         success = False
+    
+    # get package dataframe
+    path = os.path.join(output_path, 'df_package.pkl')
+    if os.path.isfile(path):
+        df = pd.read_pickle(path)
+        set_dataframe(df, 'package')
+    else:
+        success = False
+    
+    # get history dataframe
+    path = os.path.join(output_path, 'df_history.pkl')
+    if os.path.isfile(path):
+        df = pd.read_pickle(path)
+        set_dataframe(df, 'history')
+    else:
+        success = False
+        
+    # set empty if no success in getting dataframes
+    if success == False:
+        set_dataframe([], 'aggregate')
+        set_dataframe([], 'package')
+        set_dataframe([], 'history')
         
     return success
     
@@ -120,22 +130,26 @@ def store_dataframes():
     # get the output path
     output_path = get_path('output')
     
-    # try to store the dataframes in a pickle file
-    success = True
-    try:
+    # if save is successful or not
+    success = False
+    
+    # save aggregate
+    if os.path.exists(output_path):
         path = os.path.join(output_path, 'df_aggregate.pkl')
         df = get_dataframe('aggregate')
         df.to_pickle(path)
         
+        # save package
         path = os.path.join(output_path, 'df_package.pkl')
         df = get_dataframe('package')
         df.to_pickle(path)
         
+        # save history
         path = os.path.join(output_path, 'df_history.pkl')
         df = get_dataframe('history')
         df.to_pickle(path)
-    except:
-        success = False
+        
+        success = True
         
     return success
     
@@ -147,24 +161,31 @@ def load_error_logs():
     # get our script directory
     script_path = get_path('script')
     
-    # try to open pickle file containing our error logs
+    # if save is successful or not
     success = True
-    try:
-        # load build log and set to our global error log list, if it exists
-        path = os.path.join(script_path, 'build_errors.pkl')
-        if os.path.exists(path):
-            with open(path, 'rb') as handle:
-                log = pickle.load(handle)
-                set_error_log(log, 'build')
-        
-        # load merge log and set to our global error log list, if it exists
-        path = os.path.join(script_path, 'merge_errors.pkl')
-        if os.path.exists(path):
-            with open(path, 'rb') as handle:
-                log = pickle.load(handle)
-                set_error_log(log, 'merge')
-    except:
+    
+    # load build log and set to our global error log list, if it exists
+    path = os.path.join(script_path, 'build_errors.pkl')
+    if os.path.exists(path):
+        with open(path, 'rb') as handle:
+            log = pickle.load(handle)
+            set_error_log(log, 'build')
+    else:
         success = False
+    
+    # load merge log and set to our global error log list, if it exists
+    path = os.path.join(script_path, 'merge_errors.pkl')
+    if os.path.exists(path):
+        with open(path, 'rb') as handle:
+            log = pickle.load(handle)
+            set_error_log(log, 'merge')
+    else:
+        success = False
+        
+    # set empty if no success in getting error logs
+    if success == False:
+        set_error_log([], 'build')
+        set_error_log([], 'merge')
         
     return success
     
@@ -178,9 +199,11 @@ def store_error_logs():
     build_log = get_error_log('build')
     merge_log = get_error_log('merge')
     
-    # try to save logs to a pickle file
+    # if save is successful or not
     success = True
-    try:
+    
+    # try to save logs to a pickle file
+    if os.path.exists(script_path):
         # if there are build errors logged, save them to our script directory
         if len(build_log) != 0:
             path = os.path.join(script_path, 'build_errors.pkl')
@@ -192,7 +215,7 @@ def store_error_logs():
             path = os.path.join(script_path, 'merge_errors.pkl')
             with open(path, 'wb') as handle:               
                 pickle.dump(merge_log, handle)
-    except:
+    else:
         success = False
         
     return success
@@ -279,34 +302,38 @@ def display_errors():
     build_log = get_error_log('build')
     merge_log = get_error_log('merge')
     
-    # ask the user which errors to see
-    print("Which errors would you like to see?")
-    print("Options: B = Build, M = Merge")
-    print("\n")
-    option = input(": ")
-    
-    if option.upper() == 'B':
-        # print the error report for data building
-        for i in build_log:
-            print("\n") 
-            print("Error while building data for:", i[0])
-            print("Error from file:", i[1])
-            print(type(i[2]), ':', i[2])
+    if len(build_log) != 0 or len(merge_log) != 0:
+        # ask the user which errors to see
+        print("Which errors would you like to see?")
+        print("Options: B = Build, M = Merge")
+        print("\n")
+        option = input(">: ")
+        
+        if option.upper() == 'B':
+            # print the error report for data building
+            for i in build_log:
+                print("\n") 
+                print("Error while building data for:", i[0])
+                print("Error from file:", i[1])
+                print(type(i[2]), ':', i[2])
+                print('\n')
+                
+            print("This data was not build properly!", end='\n\n')
+        elif option.upper() == 'M':
+            # print error report for data merging
+            for i in merge_log:
+                print('\n')
+                print('Error with package:', i[0])
+                print('Merging PLD date:', i[1])
+                print(type(i[2]), ':', i[2])
+                print('\n')
+                
+            print("This data was not merged properly!", end='\n\n')
+        else:
             print('\n')
-            
-        print("This data was not build!", end='\n\n')
-    elif option.upper() == 'M':
-        # print error report for data merging
-        for i in merge_log:
-            print('\n')
-            print('Error with package:', i[0])
-            print('For date:', i[1])
-            print('\n')
-            
-        print("This data was not merged!", end='\n\n')
+            print("Invalid selection.", end='\n\n')
     else:
-        print('\n')
-        print("Invalid selection.")
+        print("No error to display.", end='\n\n')
         
     # Wait until the user clears screen
     input("Press enter to continue...")
@@ -320,10 +347,14 @@ def display_dataframes():
     df_package = get_dataframe('package')
     df_history = get_dataframe('history')
     
-    # display the dataframes on the console
-    print("Dataframe Aggregate:\n", df_aggregate, end='\n\n')
-    print("Dataframe Package:\n", df_package, end='\n\n')
-    print("Dataframe History:\n", df_history, end='\n\n')
+    # display dataframes if there are any built
+    if len(df_aggregate) != 0:
+        # display the dataframes on the console
+        print("Dataframe Aggregate:\n", df_aggregate, end='\n\n')
+        print("Dataframe Package:\n", df_package, end='\n\n')
+        print("Dataframe History:\n", df_history, end='\n\n')
+    else:
+        print("No dataframes to display.", end='\n\n')
 
     # Wait until the user clears screen
     input("Press enter to continue...")
@@ -738,7 +769,10 @@ def make_aggregate_dataframe(xlsx_file, date):
     
     # rename columns
     df = df.rename(columns={"Areas" : "Area Counts", "Counts" : "Pkg Counts", \
-                            "Code 85" : "Missing", "All Codes" : "Pkg Returns"})
+                            "Code 85" : "Pkg Missing", "All Codes" : "Pkg Returns"})
+                            
+    # retain order and approriate columns
+    df = df[['Date', 'Area Counts', 'Pkg Counts', 'Pkg Returns', 'Pkg Missing']]
     
     # reset the index values from 0 to n-1
     df = df.reset_index(drop=True)
@@ -748,9 +782,9 @@ def make_aggregate_dataframe(xlsx_file, date):
 
 
 
-def make_package_dataframe(xlsx_file, which):
+def make_package_dataframe(xlsx_file, sheet_name):
     # read Excel sheets
-    df = pd.read_excel(xlsx_file, which)
+    df = pd.read_excel(xlsx_file, sheet_name)
     
     # fill any missing 'Service' values as 'S' (Standard service)
     df['Service'] = df['Service'].fillna('S')
@@ -758,14 +792,17 @@ def make_package_dataframe(xlsx_file, which):
     # fill any missing 'Signature' values as 'N' (No signature)
     df['Signature'] = df['Signature'].fillna('N')
     
+    # retain order and appropriate columns
+    df = df[['Package ID', 'Service', 'Signature']]
+    
     return df
 
     
     
     
-def make_history_dataframe(xlsx_file, which):
+def make_history_dataframe(xlsx_file, sheet_name):
     # read Excel sheets
-    df = pd.read_excel(xlsx_file, which)
+    df = pd.read_excel(xlsx_file, sheet_name)
 
     # drop the time stamp
     df = df.drop('Time', axis=1)
@@ -866,7 +903,7 @@ def make_history_dataframe(xlsx_file, which):
     df = df.merge(driver_split, how='left', left_index=True, right_index=True)
     # ------------------------- DRIVER CODES COMPLETE ---------------------->
     
-    # reorder and rename column names
+    # reorder and retain appropriate columns
     column_order = ['Package ID', 'Date', 'DoW', 'Type', 'Station Code', 'Driver Code', 'Reason']
     df = df[column_order]
     
@@ -879,13 +916,9 @@ def make_history_dataframe(xlsx_file, which):
 
 
 
-def make_pld_dataframe(xlsx_file, date):
+def make_pld_dataframe(xlsx_file,  sheet_name, date):
     # read Excel sheet
-    df = pd.read_excel(xlsx_file, 'PLD')
-    df_missing = pd.read_excel(xlsx_file, '85')
-    
-    # add missing packages to the rest of the packages
-    df = pd.concat([df, df_missing])
+    df = pd.read_excel(xlsx_file, sheet_name)
     
     # drop Count and Time columns
     df = df.drop(['Count', 'Time'], axis=1)
@@ -1020,8 +1053,7 @@ def history_merge_pld(df_history, df_pld):
     # loop over all the individual packages in history
     for i in tqdm(history_idx):
         # collect and reset error
-        if pkg_error == True:
-            errors += 1
+        if pkg_error == True:           
             pkg_error = False
     
         # get the package's history
@@ -1060,12 +1092,13 @@ def history_merge_pld(df_history, df_pld):
                 merged_dataframe.at[index, 'Loaded Area'] = df_pld_date['Loaded Area'].values[0]
                 merged_dataframe.at[index, 'Zipcode'] = df_pld_date['Zipcode'].values[0]
                 
-            except:
+            except Exception as err:
                 # set package error to true
                 pkg_error = True
+                errors += 1
                 
                 # log error
-                merge_error_log.append([i, j])                
+                merge_error_log.append([i, j, err])                
     # --------------------------------------- END MERGING CODE ------------------------------>
     
     # ----------------------------- CLEANUP AND TYPE CASTING -------------------------------->
@@ -1104,17 +1137,17 @@ def build_data():
     # get filenames
     files = get_filenames()
     
-    # get the start date
-    start_date = get_start_date()
-    
-    # load Excel Workbook
-    xlsx = pd.ExcelFile(files[0])
-    
     # initialize all dataframes
-    df_aggregate = make_aggregate_dataframe(xlsx, start_date)
-    df_package = make_package_dataframe(xlsx, 'SVC')
-    df_history = make_history_dataframe(xlsx, 'HIST')
-    df_pld = make_pld_dataframe(xlsx, start_date)
+    df_aggregate = pd.DataFrame(columns=["Date", "Area Counts", "Pkg Counts", "Pkg Returns", "Pkg Missing"])
+    
+    df_package = pd.DataFrame(columns=['Package ID', 'Service', 'Signature'])
+    
+    df_history = pd.DataFrame(columns=['Package ID', 'Date', 'DoW', 'Type', 'Station Code', \
+                                       'Driver Code', 'Reason'])
+                                       
+    df_pld = pd.DataFrame(columns=['Package ID', 'Zipcode', 'Provider', \
+                                   'Assigned Area', 'Loaded Area', 'Station Code', \
+                                   'Driver Code', 'Date'])
     
     print("Dataframe initialization complete.", end='\n\n')
     # ------------------- initialization complete ------------------>
@@ -1123,22 +1156,22 @@ def build_data():
     build_error_log = []
     # ---------------- build the aggregate dataframe --------------->   
     # loop over the rest of the files and append aggregate data to the dataframe
-    # only triggers when there is more than one file to read!!
-    if len(files) > 1:
-        print("\nBuilding aggregate dataframe...")
-        for file in tqdm(files[1:]):
-            try:
-                # load Excel file and file date
-                xlsx = pd.ExcelFile(file)
-                xlsx_date = capture_file_date(file)
-                
-                # create dataframe from file and append to aggregate dataframe
-                df_xlsx = make_aggregate_dataframe(xlsx, xlsx_date)
-                df_aggregate = pd.concat([df_aggregate, df_xlsx])
-                
-            except Exception as err:
-                    df_name = 'df_aggregate'
-                    build_error_log.append([df_name, file, err])
+    print("\nBuilding aggregate dataframe...")
+    pbar = tqdm(files)
+    pbar.set_description('Daily')
+    for file in pbar:
+        try:
+            # load Excel file and file date
+            xlsx = pd.ExcelFile(file)
+            xlsx_date = capture_file_date(file)
+            
+            # create dataframe from file and append to aggregate dataframe
+            df_xlsx = make_aggregate_dataframe(xlsx, xlsx_date)
+            df_aggregate = pd.concat([df_aggregate, df_xlsx])
+            
+        except Exception as err:
+                df_name = 'df_aggregate (Daily)'
+                build_error_log.append([df_name, file, err])
     
     # reset indices for the dataframe
     df_aggregate = df_aggregate.reset_index(drop=True)
@@ -1150,46 +1183,44 @@ def build_data():
     
     # ----------------- build the package dataframe ---------------->
     # loop over the rest of the files and append package data to the dataframe
-    # only triggers when there is more than one file to read!!
-    if len(files) > 1:
-        print("Building package dataframe...")
-        # process for PLD data
-        pbar = tqdm(files[1:])
-        pbar.set_description('SVC')
-        for file in pbar:
-            try:
-                # load Excel file and file date
-                xlsx = pd.ExcelFile(file)
+    print("Building package dataframe...")
+    # process for PLD data
+    pbar = tqdm(files)
+    pbar.set_description('SVC')
+    for file in pbar:
+        try:
+            # load Excel file and file date
+            xlsx = pd.ExcelFile(file)
+            
+            # create dataframe from file and append to package dataframe
+            df_xlsx = make_package_dataframe(xlsx, 'SVC')
+            df_xlsx = compare_dataframe(df_package, df_xlsx)
+            df_package = pd.concat([df_package, df_xlsx])
+        
+        except Exception as err:
+                df_name = 'df_package (SVC)'
+                build_error_log.append([df_name, file, err])
                 
+    # process for 85 data
+    pbar = tqdm(files)
+    pbar.set_description('85_SVC')
+    for file in pbar:     
+        try:
+            # load Excel file and file date
+            xlsx = pd.ExcelFile(file)
+            
+            # check to see if the dataframe is empty first
+            is_empty = check_df_is_empty(xlsx, '85_SVC')
+            
+            if is_empty != True:
                 # create dataframe from file and append to package dataframe
-                df_xlsx = make_package_dataframe(xlsx, 'SVC')
+                df_xlsx = make_package_dataframe(xlsx, '85_SVC')
                 df_xlsx = compare_dataframe(df_package, df_xlsx)
                 df_package = pd.concat([df_package, df_xlsx])
-            
-            except Exception as err:
-                    df_name = 'df_package'
-                    build_error_log.append([df_name, file, err])
-                    
-        # process for 85 data
-        pbar = tqdm(files[1:])
-        pbar.set_description('85_SVC')
-        for file in pbar:     
-            try:
-                # load Excel file and file date
-                xlsx = pd.ExcelFile(file)
-                
-                # check to see if the dataframe is empty first
-                is_empty = check_df_is_empty(xlsx, '85_SVC')
-                
-                if is_empty != True:
-                    # create dataframe from file and append to package dataframe
-                    df_xlsx = make_package_dataframe(xlsx, '85_SVC')
-                    df_xlsx = compare_dataframe(df_package, df_xlsx)
-                    df_package = pd.concat([df_package, df_xlsx])
-            
-            except Exception as err:
-                    df_name = 'df_package'
-                    build_error_log.append([df_name, file, err])
+        
+        except Exception as err:
+                df_name = 'df_package (85_SVC)'
+                build_error_log.append([df_name, file, err])
                 
                     
     # drop any duplicate in the dataframe
@@ -1205,45 +1236,43 @@ def build_data():
     
     # ----------------- build the history dataframe ---------------->   
     # loop over the rest of the files and append history data to the dataframe
-    # only triggers when there is more than one file to read!!
-    if len(files) > 1:
-        print("Building history dataframe...")
-        pbar = tqdm(files[1:])
-        pbar.set_description('HIST')
-        for file in pbar:
-            try:
-                # load Excel file and file date
-                xlsx = pd.ExcelFile(file)
+    print("Building history dataframe...")
+    pbar = tqdm(files)
+    pbar.set_description('HIST')
+    for file in pbar:
+        try:
+            # load Excel file and file date
+            xlsx = pd.ExcelFile(file)
+            
+            # create dataframe from file and append to history dataframe
+            df_xlsx = make_history_dataframe(xlsx, 'HIST')
+            df_xlsx = compare_dataframe(df_history, df_xlsx)
+            df_history = pd.concat([df_history, df_xlsx])
+        
+        except Exception as err:
+                df_name = 'df_history (HIST)'
+                build_error_log.append([df_name, file, err])
                 
-                # create dataframe from file and append to history dataframe
-                df_xlsx = make_history_dataframe(xlsx, 'HIST')
+    # process for 85 data
+    pbar = tqdm(files)
+    pbar.set_description('85_HIST')
+    for file in pbar:     
+        try:
+            # load Excel file and file date
+            xlsx = pd.ExcelFile(file)
+            
+            # check to see if the dataframe is empty first
+            is_empty = check_df_is_empty(xlsx, '85_HIST')
+            
+            if is_empty != True:
+                # create dataframe from file and append to package dataframe
+                df_xlsx = make_history_dataframe(xlsx, '85_HIST')
                 df_xlsx = compare_dataframe(df_history, df_xlsx)
                 df_history = pd.concat([df_history, df_xlsx])
-            
-            except Exception as err:
-                    df_name = 'df_history'
-                    build_error_log.append([df_name, file, err])
-                    
-        # process for 85 data
-        pbar = tqdm(files[1:])
-        pbar.set_description('85_HIST')
-        for file in pbar:     
-            try:
-                # load Excel file and file date
-                xlsx = pd.ExcelFile(file)
-                
-                # check to see if the dataframe is empty first
-                is_empty = check_df_is_empty(xlsx, '85_HIST')
-                
-                if is_empty != True:
-                    # create dataframe from file and append to package dataframe
-                    df_xlsx = make_history_dataframe(xlsx, '85_HIST')
-                    df_xlsx = compare_dataframe(df_history, df_xlsx)
-                    df_history = pd.concat([df_history, df_xlsx])
-            
-            except Exception as err:
-                df_name = 'df_history'
-                build_error_log.append([df_name, file, err])
+        
+        except Exception as err:
+            df_name = 'df_history (85_HIST)'
+            build_error_log.append([df_name, file, err])
     
     # drop any duplicate in the dataframe
     df_history = df_history.drop_duplicates()
@@ -1261,22 +1290,39 @@ def build_data():
     
     # ----------------- build the PLD dataframe -------------------->
     # loop over the rest of the files and append history data to the dataframe
-    # only triggers when there is more than one file to read!!
-    if len(files) > 1:
-        print("Building PLD dataframe...")
-        for file in tqdm(files[1:]):
-            try:
-                # load Excel file and file date
-                xlsx = pd.ExcelFile(file)
-                xlsx_date = capture_file_date(file)
-                
-                # create dataframe from file and append to history dataframe
-                df_xlsx = make_pld_dataframe(xlsx, xlsx_date)
-                df_pld = pd.concat([df_pld, df_xlsx])
-                
-            except Exception as err:
-                df_name = 'df_pld'
-                build_error_log.append([df_name, file, err])
+    print("Building PLD dataframe...")
+    pbar = tqdm(files)
+    pbar.set_description('PLD')
+    for file in pbar:
+        try:
+            # load Excel file and file date
+            xlsx = pd.ExcelFile(file)
+            xlsx_date = capture_file_date(file)
+            
+            # create dataframe from file and append to history dataframe
+            df_xlsx = make_pld_dataframe(xlsx, 'PLD', xlsx_date)
+            df_pld = pd.concat([df_pld, df_xlsx])
+            
+        except Exception as err:
+            df_name = 'df_pld (PLD)'
+            build_error_log.append([df_name, file, err])
+        
+    # build 85 data
+    pbar = tqdm(files)
+    pbar.set_description('85')
+    for file in pbar:
+        try:
+            # load Excel file and file date
+            xlsx = pd.ExcelFile(file)
+            xlsx_date = capture_file_date(file)
+            
+            # create dataframe from file and append to history dataframe
+            df_xlsx = make_pld_dataframe(xlsx, '85', xlsx_date)
+            df_pld = pd.concat([df_pld, df_xlsx])
+            
+        except Exception as err:
+            df_name = 'df_pld (85)'
+            build_error_log.append([df_name, file, err])
                 
     # drop any duplicate in the dataframe
     df_pld = df_pld.drop_duplicates()
@@ -1316,21 +1362,16 @@ def build_data():
     # save the errors in a file
     err_save_success = store_error_logs()
     
-    # prompt user with success and error counts
-    print("----------------------------------")
-    print("----------BUILD ERRORS------------")
-    print("----------------------------------")
-    print("Build errors:", build_error_count)
-    print("Merge errors:", merge_error_count)
-    print("\n\n")
-    
+    # prompt user with success and error counts  
     print("----------------------------------")
     print("-------DATA BUILD SUCCESS---------")
     print("----------------------------------")
-    print("Dataframes have been built.")
+    print("Dataframes have been built.", end='\n')
+    print("Total sample size (Packages):", len(df_package))
+    print("Build errors:", build_error_count)
+    print("Merge errors:", merge_error_count, end='\n')
     print("Dataframes successfully saved:", df_save_success)
-    print("Error logs successfully saved:", err_save_success)
-    print("\n\n")
+    print("Error logs successfully saved:", err_save_success, end='\n\n')
     
     # hold screen until pressing enter
     input("Press enter to continue...")
@@ -1397,14 +1438,14 @@ def main(args):
     
     # check if file loading was successful
     if load_df_success == True:
-        print("Built dataframes loaded successfully.", end='\n\n')
+        print("Dataframes loaded successfully.", end='\n\n')
     else:
-        print("Built dataframes not loaded.", end='\n\n')
+        print("No dataframes loaded.", end='\n\n')
     
     if load_log_success == True:
         print("Error logs loaded successfully.", end='\n\n')
     else:
-        print("Error logs not loaded.", end='\n\n')
+        print("No Error logs loaded.", end='\n\n')
         
     # Wait for user to continue
     input("Press enter to continue...")
