@@ -318,7 +318,7 @@ def display_errors():
                 print(type(i[2]), ':', i[2])
                 print('\n')
                 
-            print("This data was not build properly!", end='\n\n')
+            print("This data was not built properly!", end='\n\n')
         elif option.upper() == 'M':
             # print error report for data merging
             for i in merge_log:
@@ -348,7 +348,7 @@ def display_dataframes():
     df_history = get_dataframe('history')
     
     # display dataframes if there are any built
-    if len(df_aggregate) != 0:
+    if len(df_aggregate) != 0 or len(df_package) != 0 or len(df_history) != 0:
         # display the dataframes on the console
         print("Dataframe Aggregate:\n", df_aggregate, end='\n\n')
         print("Dataframe Package:\n", df_package, end='\n\n')
@@ -768,11 +768,11 @@ def make_aggregate_dataframe(xlsx_file, date):
     df.insert(loc=0, column='Date', value=array_date)
     
     # rename columns
-    df = df.rename(columns={"Areas" : "Area Counts", "Counts" : "Pkg Counts", \
-                            "Code 85" : "Pkg Missing", "All Codes" : "Pkg Returns"})
+    df = df.rename(columns={"Date" : "date", "Areas" : "area_counts", "Counts" : "pkg_counts", \
+                            "Code 85" : "pkg_missing", "All Codes" : "pkg_returns"})
                             
     # retain order and approriate columns
-    df = df[['Date', 'Area Counts', 'Pkg Counts', 'Pkg Returns', 'Pkg Missing']]
+    df = df[['date', 'area_counts', 'pkg_counts', 'pkg_returns', 'pkg_missing']]
     
     # reset the index values from 0 to n-1
     df = df.reset_index(drop=True)
@@ -792,8 +792,11 @@ def make_package_dataframe(xlsx_file, sheet_name):
     # fill any missing 'Signature' values as 'N' (No signature)
     df['Signature'] = df['Signature'].fillna('N')
     
+    # rename columns
+    df = df.rename(columns={'Package ID' : 'package_id', 'Service' : 'service', 'Signature' : 'signature'})
+    
     # retain order and appropriate columns
-    df = df[['Package ID', 'Service', 'Signature']]
+    df = df[['package_id', 'service', 'signature']]
     
     return df
 
@@ -903,12 +906,17 @@ def make_history_dataframe(xlsx_file, sheet_name):
     df = df.merge(driver_split, how='left', left_index=True, right_index=True)
     # ------------------------- DRIVER CODES COMPLETE ---------------------->
     
+    # rename columns
+    df = df.rename(columns={'Package ID' : 'package_id', 'Date' : 'date', 'DoW' : 'dow', \
+                           'Type' : 'type',  'Station Code' : 'station_code', \
+                           'Driver Code' : 'driver_code', 'Reason' : 'reason'})
+    
     # reorder and retain appropriate columns
-    column_order = ['Package ID', 'Date', 'DoW', 'Type', 'Station Code', 'Driver Code', 'Reason']
+    column_order = ['package_id', 'date', 'dow', 'type', 'station_code', 'driver_code', 'reason']
     df = df[column_order]
     
     # cast column types
-    for i in df[['Package ID', 'Date', 'DoW', 'Type']].columns:
+    for i in df[['package_id', 'date', 'dow', 'type']].columns:
         df[i] = df[i].astype('string')
     
     return df
@@ -929,30 +937,38 @@ def make_pld_dataframe(xlsx_file,  sheet_name, date):
     # insert the date column column
     df.insert(loc=0, column='Date', value=array_date)
     
-    # reorder columns and rename columns
-    column_order = ['Package ID', 'Zipcode', 'Provider', \
-                    'Assigned Area', 'Loaded Area', 'Station Code', \
-                    'Driver Code', 'Date']
-    df = df.rename(columns={'Area' : 'Loaded Area'}).loc[:, column_order]
+    # rename columns
+    column_names = {'Package ID' : 'package_id', 'Zipcode' : 'zipcode', 'Provider' : 'provider', \
+                    'Assigned Area' : 'assigned_area', 'Area' : 'loaded_area', \
+                    'Station Code' : 'station_code', 'Driver Code' : 'driver_code', 'Date' : 'date'}
+                    
+    df = df.rename(columns=column_names)
+    
+    # reorder columns
+    column_order = ['package_id', 'zipcode', 'provider', \
+                    'assigned_area', 'loaded_area', 'station_code', \
+                    'driver_code', 'date']
+                    
+    df = df[column_order]
     
     
     # ---------------- FILL AND CAST VALUE TYPES ----------------------->
-    df['Package ID'] = df['Package ID'].astype('string')   
-    df['Zipcode'] = df['Zipcode'].fillna(0)
-    df['Zipcode'] = df['Zipcode'].astype('int')  
-    df['Provider'] = df['Provider'].fillna('None')
-    df['Provider'] = df['Provider'].astype('string') 
-    df['Assigned Area'] = df['Assigned Area'].fillna(0)
-    df['Assigned Area'] = df['Assigned Area'].astype('int')
-    df['Loaded Area'] = df['Loaded Area'].fillna(0)
-    df['Loaded Area'] = df['Loaded Area'].astype('int')
-    df['Station Code'] = df['Station Code'].fillna(0)
-    df['Station Code'] = df['Station Code'].astype('int')  
-    df['Driver Code'] = df['Driver Code'].fillna(0)
-    df['Driver Code'] = df['Driver Code'].astype('int')
+    df['package_id'] = df['package_id'].astype('string')   
+    df['zipcode'] = df['zipcode'].fillna(0)
+    df['zipcode'] = df['zipcode'].astype('int')  
+    df['provider'] = df['provider'].fillna('None')
+    df['provider'] = df['provider'].astype('string') 
+    df['assigned_area'] = df['assigned_area'].fillna(0)
+    df['assigned_area'] = df['assigned_area'].astype('int')
+    df['loaded_area'] = df['loaded_area'].fillna(0)
+    df['loaded_area'] = df['loaded_area'].astype('int')
+    df['station_code'] = df['station_code'].fillna(0)
+    df['station_code'] = df['station_code'].astype('int')  
+    df['driver_code'] = df['driver_code'].fillna(0)
+    df['driver_code'] = df['driver_code'].astype('int')
     
     
-    df['Date'] = df['Date'].astype('string')
+    df['date'] = df['date'].astype('string')
     # ------------------- END FILL AND CAST ---------------------------->
     
     return df
@@ -968,7 +984,7 @@ def index_history(df_history):
     df.insert(loc=0, column='Order', value=array_order)
     
     # get unique package IDs
-    pkgs = pd.unique(df['Package ID'])
+    pkgs = pd.unique(df['package_id'])
     
     # progress bar
     pbar = tqdm(pkgs)
@@ -976,14 +992,14 @@ def index_history(df_history):
     
     # loop over individual package IDs and index history entries
     for i in pbar:
-        df_pkg = df[df['Package ID'] == i]
+        df_pkg = df[df['package_id'] == i]
         pkg_indexer = 0
         for j in df_pkg.index:
             df.at[j, 'Order'] = pkg_indexer
             pkg_indexer += 1
     
     # reorder columns
-    column_order = ['Package ID', 'Order', 'Date', 'DoW', 'Type', 'Station Code', 'Driver Code', 'Reason']
+    column_order = ['package_id', 'Order', 'date', 'dow', 'type', 'station_code', 'driver_code', 'reason']
     df = df[column_order]
     
     return df
@@ -1006,15 +1022,15 @@ def check_df_is_empty(xlsx_file, df_type):
 
 
 def compare_dataframe(df_target, df_concat):
-    target_pkgs = pd.unique(df_target['Package ID'])
-    concat_pkgs = pd.unique(df_concat['Package ID'])
+    target_pkgs = pd.unique(df_target['package_id'])
+    concat_pkgs = pd.unique(df_concat['package_id'])
     
     df = df_concat.copy()
     
     # remove packages from the dataframe that you want to concat
     for i in target_pkgs:
         if i in concat_pkgs:
-            df = df[df['Package ID'] != i]
+            df = df[df['package_id'] != i]
             
     return df
 
@@ -1026,10 +1042,10 @@ def history_merge_pld(df_history, df_pld):
     merged_dataframe = df_history
 
     # all the unique package IDs from the history dataframe
-    history_idx = pd.unique(merged_dataframe['Package ID'])
+    history_idx = pd.unique(merged_dataframe['package_id'])
     
     # add PLD columns to the history dataframe
-    pld_columns = df_pld[['Provider', 'Assigned Area', 'Loaded Area', 'Zipcode']].columns
+    pld_columns = df_pld[['provider', 'assigned_area', 'loaded_area', 'zipcode']].columns
     
     # build blank columns for PLD data
     array_provider = np.full((len(merged_dataframe)), '', dtype='str')
@@ -1038,10 +1054,10 @@ def history_merge_pld(df_history, df_pld):
     array_zipcode = np.full((len(merged_dataframe)), 0, dtype='int')
     
     # insert new columns into package's history dataframe
-    merged_dataframe.insert(loc=len(merged_dataframe.columns), column='Provider', value=array_provider)
-    merged_dataframe.insert(loc=len(merged_dataframe.columns), column='Assigned Area', value=array_assigned_area)
-    merged_dataframe.insert(loc=len(merged_dataframe.columns), column='Loaded Area', value=array_loaded_area)
-    merged_dataframe.insert(loc=len(merged_dataframe.columns), column='Zipcode', value=array_zipcode)
+    merged_dataframe.insert(loc=len(merged_dataframe.columns), column='provider', value=array_provider)
+    merged_dataframe.insert(loc=len(merged_dataframe.columns), column='assigned_area', value=array_assigned_area)
+    merged_dataframe.insert(loc=len(merged_dataframe.columns), column='loaded_area', value=array_loaded_area)
+    merged_dataframe.insert(loc=len(merged_dataframe.columns), column='zipcode', value=array_zipcode)
     
     # ------------------------------------------- MERGING CODE ------------------------------>
     
@@ -1057,40 +1073,39 @@ def history_merge_pld(df_history, df_pld):
             pkg_error = False
     
         # get the package's history
-        df_pkg_hist = df_history[df_history['Package ID'] == i]
+        df_pkg_hist = df_history[df_history['package_id'] == i]
         
         # get the package's pld data
-        df_pkg_pld = df_pld[df_pld['Package ID'] == i]
+        df_pkg_pld = df_pld[df_pld['package_id'] == i]
         
         # for each entry for the package in the PLD dataframe
-        for j in df_pkg_pld['Date']:
+        for j in df_pkg_pld['date']:
             # dataframe from package's history for this date
-            df_hist_dates = df_pkg_hist[df_pkg_hist['Date'] == j]
-            # print(df_hist_dates)
+            df_hist_dates = df_pkg_hist[df_pkg_hist['date'] == j]
             
             try:
                 # tuple in package PLD for the date
-                df_pld_date = df_pkg_pld[df_pkg_pld['Date'] == j]
+                df_pld_date = df_pkg_pld[df_pkg_pld['date'] == j]
                 
                 # driver code form the PLD date tuple
-                driver_code = df_pld_date['Driver Code'].values[0]
+                driver_code = df_pld_date['driver_code'].values[0]
                 
         
                 # first attempt to get an index
-                index = df_hist_dates[df_hist_dates['Driver Code'] == driver_code].first_valid_index()
+                index = df_hist_dates[df_hist_dates['driver_code'] == driver_code].first_valid_index()
                 
                 # second attempt
                 if index == None:
-                    index = df_hist_dates[df_hist_dates['Station Code'] == driver_code].first_valid_index()
+                    index = df_hist_dates[df_hist_dates['station_code'] == driver_code].first_valid_index()
                 
                 # third attempt
                 if index == None:
-                    index = df_pkg_hist[df_pkg_hist['Date'] == j].first_valid_index()
+                    index = df_pkg_hist[df_pkg_hist['date'] == j].first_valid_index()
                 
-                merged_dataframe.at[index, 'Provider'] = df_pld_date['Provider'].values[0]
-                merged_dataframe.at[index, 'Assigned Area'] = df_pld_date['Assigned Area'].values[0]
-                merged_dataframe.at[index, 'Loaded Area'] = df_pld_date['Loaded Area'].values[0]
-                merged_dataframe.at[index, 'Zipcode'] = df_pld_date['Zipcode'].values[0]
+                merged_dataframe.at[index, 'provider'] = df_pld_date['provider'].values[0]
+                merged_dataframe.at[index, 'assigned_area'] = df_pld_date['assigned_area'].values[0]
+                merged_dataframe.at[index, 'loaded_area'] = df_pld_date['loaded_area'].values[0]
+                merged_dataframe.at[index, 'zipcode'] = df_pld_date['zipcode'].values[0]
                 
             except Exception as err:
                 # set package error to true
@@ -1107,17 +1122,17 @@ def history_merge_pld(df_history, df_pld):
     
     # type casting for columns
     merged_dataframe.index = merged_dataframe.index.astype('int')    
-    merged_dataframe['Package ID'] = merged_dataframe['Package ID'].astype('string')    
+    merged_dataframe['package_id'] = merged_dataframe['package_id'].astype('string')    
     merged_dataframe['Order'] = merged_dataframe['Order'].astype('int')    
-    merged_dataframe['Date'] = merged_dataframe['Date'].astype('string')   
-    merged_dataframe['DoW'] = merged_dataframe['DoW'].astype('string')   
-    merged_dataframe['Station Code'] = merged_dataframe['Station Code'].astype('int')   
-    merged_dataframe['Driver Code'] = merged_dataframe['Driver Code'].astype('int')   
-    merged_dataframe['Reason'] = merged_dataframe['Reason'].astype('int')            
-    merged_dataframe['Zipcode'] = merged_dataframe['Zipcode'].astype('int')    
-    merged_dataframe['Provider'] = merged_dataframe['Provider'].astype('string')    
-    merged_dataframe['Assigned Area'] = merged_dataframe['Assigned Area'].astype('int')
-    merged_dataframe['Loaded Area'] = merged_dataframe['Loaded Area'].astype('int')
+    merged_dataframe['date'] = merged_dataframe['date'].astype('string')   
+    merged_dataframe['dow'] = merged_dataframe['dow'].astype('string')   
+    merged_dataframe['station_code'] = merged_dataframe['station_code'].astype('int')   
+    merged_dataframe['driver_code'] = merged_dataframe['driver_code'].astype('int')   
+    merged_dataframe['reason'] = merged_dataframe['reason'].astype('int')            
+    merged_dataframe['zipcode'] = merged_dataframe['zipcode'].astype('int')    
+    merged_dataframe['provider'] = merged_dataframe['provider'].astype('string')    
+    merged_dataframe['assigned_area'] = merged_dataframe['assigned_area'].astype('int')
+    merged_dataframe['loaded_area'] = merged_dataframe['loaded_area'].astype('int')
     # ------------------------- END CLEANUP AND TYPE CASTING -------------------------------->
             
     return merged_dataframe, merge_error_log
@@ -1138,16 +1153,16 @@ def build_data():
     files = get_filenames()
     
     # initialize all dataframes
-    df_aggregate = pd.DataFrame(columns=["Date", "Area Counts", "Pkg Counts", "Pkg Returns", "Pkg Missing"])
+    df_aggregate = pd.DataFrame(columns=["date", "area_counts", "pkg_counts", "pkg_returns", "pkg_missing"])
     
-    df_package = pd.DataFrame(columns=['Package ID', 'Service', 'Signature'])
+    df_package = pd.DataFrame(columns=['package_id', 'service', 'signature'])
     
-    df_history = pd.DataFrame(columns=['Package ID', 'Date', 'DoW', 'Type', 'Station Code', \
-                                       'Driver Code', 'Reason'])
+    df_history = pd.DataFrame(columns=['package_id', 'date', 'dow', 'type', 'station_code', \
+                                       'driver_code', 'reason'])
                                        
-    df_pld = pd.DataFrame(columns=['Package ID', 'Zipcode', 'Provider', \
-                                   'Assigned Area', 'Loaded Area', 'Station Code', \
-                                   'Driver Code', 'Date'])
+    df_pld = pd.DataFrame(columns=['package_id', 'zipcode', 'provider', \
+                                   'assigned_area', 'loaded_area', 'station_code', \
+                                   'driver_code', 'date'])
     
     print("Dataframe initialization complete.", end='\n\n')
     # ------------------- initialization complete ------------------>
@@ -1224,7 +1239,7 @@ def build_data():
                 
                     
     # drop any duplicate in the dataframe
-    df_package = df_package.drop_duplicates(subset=['Package ID'])
+    df_package = df_package.drop_duplicates(subset=['package_id'])
     
     # reset indices for the dataframe
     df_package = df_package.reset_index(drop=True)
