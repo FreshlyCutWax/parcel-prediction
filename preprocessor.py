@@ -205,16 +205,20 @@ def store_error_logs():
     # try to save logs to a pickle file
     if os.path.exists(script_path):
         # if there are build errors logged, save them to our script directory
+        path = os.path.join(script_path, 'build_errors.pkl')
         if len(build_log) != 0:
-            path = os.path.join(script_path, 'build_errors.pkl')
             with open(path, 'wb') as handle:               
                 pickle.dump(build_log, handle)
+        else:
+            os.remove(path)
         
         # if there are merge errors logged, save them to our script directory
-        if len(merge_log) != 0:
-            path = os.path.join(script_path, 'merge_errors.pkl')
+        path = os.path.join(script_path, 'merge_errors.pkl')
+        if len(merge_log) != 0:          
             with open(path, 'wb') as handle:               
                 pickle.dump(merge_log, handle)
+        else:
+            os.remove(path)
     else:
         success = False
         
@@ -237,7 +241,7 @@ def menu(start_string, end_string):
     option_clean  = MenuItem("Clean Dataframes [Not Functioning]")
     option_dates  = FunctionItem("Display All File Dates", display_dates, [])
     option_errors = FunctionItem("Show Errors", display_errors, [])
-    option_show   = FunctionItem("Show Current Built Dataframes", display_dataframes, [])
+    option_show   = FunctionItem("Show Built Dataframes", display_dataframes, [])
     
     # add options to the menu
     main_menu.append_item(option_build)
@@ -309,26 +313,47 @@ def display_errors():
         print("\n")
         option = input(">: ")
         
+        # get the errors for the build data
         if option.upper() == 'B':
-            # print the error report for data building
-            for i in build_log:
-                print("\n") 
-                print("Error while building data for:", i[0])
-                print("Error from file:", i[1])
-                print(type(i[2]), ':', i[2])
-                print('\n')
+            if len(build_log) != 0:
                 
-            print("This data was not built properly!", end='\n\n')
+                error_index = 1
+                # print the error report for data building
+                for i in build_log:
+                    print("\n")
+                    print("Error #", error_index)
+                    print("Error while building data for:", i[0])
+                    print("Error from file:", i[1])
+                    print(type(i[2]), ':', i[2])
+                    print('\n')
+                    
+                    error_index += 1
+                    
+                print("Build errors found:", len(build_log))
+                print("This data was not built properly!", end='\n\n')
+            else:
+                print("No build errors to display.", end='\n\n')
+                
+        # get the errors for the  merge data    
         elif option.upper() == 'M':
-            # print error report for data merging
-            for i in merge_log:
-                print('\n')
-                print('Error with package:', i[0])
-                print('Merging PLD date:', i[1])
-                print(type(i[2]), ':', i[2])
-                print('\n')
+            if len(merge_log) != 0:
+                error_index = 1
+                # print error report for data merging
+                for i in merge_log:
+                    print('\n')
+                    print("Error #", error_index)
+                    print('Error with package:', i[0])
+                    print('Merging PLD date:', i[1])
+                    print(type(i[2]), ':', i[2])
+                    print('\n')
+                    
+                    error_index += 1
                 
-            print("This data was not merged properly!", end='\n\n')
+                print("Merge errors found:", len(merge_log))
+                print("This data was not merged properly!", end='\n\n')
+            else:
+                print("No merge errors to display.", end='\n\n')
+                
         else:
             print('\n')
             print("Invalid selection.", end='\n\n')
@@ -981,7 +1006,7 @@ def index_history(df_history):
     
     # add empty column for the order of events
     array_order = np.full((len(df)), 0, dtype='int')
-    df.insert(loc=0, column='Order', value=array_order)
+    df.insert(loc=0, column='order', value=array_order)
     
     # get unique package IDs
     pkgs = pd.unique(df['package_id'])
@@ -995,11 +1020,11 @@ def index_history(df_history):
         df_pkg = df[df['package_id'] == i]
         pkg_indexer = 0
         for j in df_pkg.index:
-            df.at[j, 'Order'] = pkg_indexer
+            df.at[j, 'order'] = pkg_indexer
             pkg_indexer += 1
     
     # reorder columns
-    column_order = ['package_id', 'Order', 'date', 'dow', 'type', 'station_code', 'driver_code', 'reason']
+    column_order = ['package_id', 'order', 'date', 'dow', 'type', 'station_code', 'driver_code', 'reason']
     df = df[column_order]
     
     return df
@@ -1073,39 +1098,42 @@ def history_merge_pld(df_history, df_pld):
             pkg_error = False
     
         # get the package's history
-        df_pkg_hist = df_history[df_history['package_id'] == i]
+        pkg_hist = df_history[df_history['package_id'] == i]
         
         # get the package's pld data
-        df_pkg_pld = df_pld[df_pld['package_id'] == i]
+        pkg_pld = df_pld[df_pld['package_id'] == i]
         
         # for each entry for the package in the PLD dataframe
-        for j in df_pkg_pld['date']:
-            # dataframe from package's history for this date
-            df_hist_dates = df_pkg_hist[df_pkg_hist['date'] == j]
+        for pld_row in pkg_pld.itertuples():
             
+            # get the date for the PLD entry
+            date = pld_row.date
+          
             try:
-                # tuple in package PLD for the date
-                df_pld_date = df_pkg_pld[df_pkg_pld['date'] == j]
+                # index to access the appropriate package history cells in the history df
+                index = np.NaN
                 
-                # driver code form the PLD date tuple
-                driver_code = df_pld_date['driver_code'].values[0]
+                # get dataframe from package's history for the PLD date
+                pkg_hist_date = pkg_hist[pkg_hist['date'] == date]
+            
+                # iterate over the history for the package on the current date
+                # we are looking for the matching driver code
+                # we want to insert the PLD data for the package there
+                for hist_row in pkg_hist_date.itertuples():               
+                    # if you find the appropriate index, stop iterating
+                    if hist_row.driver_code == pld_row.driver_code:
+                        index = hist_row.Index
+                        break
                 
-        
-                # first attempt to get an index
-                index = df_hist_dates[df_hist_dates['driver_code'] == driver_code].first_valid_index()
-                
-                # second attempt
-                if index == None:
-                    index = df_hist_dates[df_hist_dates['station_code'] == driver_code].first_valid_index()
-                
-                # third attempt
-                if index == None:
-                    index = df_pkg_hist[df_pkg_hist['date'] == j].first_valid_index()
-                
-                merged_dataframe.at[index, 'provider'] = df_pld_date['provider'].values[0]
-                merged_dataframe.at[index, 'assigned_area'] = df_pld_date['assigned_area'].values[0]
-                merged_dataframe.at[index, 'loaded_area'] = df_pld_date['loaded_area'].values[0]
-                merged_dataframe.at[index, 'zipcode'] = df_pld_date['zipcode'].values[0]
+                # if finding the right index fails
+                if index == np.NaN:                
+                    # get the index for the first valid entry for the date
+                    index = pkg_hist_date.first_valid_index()
+                    
+                merged_dataframe.at[index, 'provider'] = pld_row.provider
+                merged_dataframe.at[index, 'assigned_area'] = pld_row.assigned_area
+                merged_dataframe.at[index, 'loaded_area'] = pld_row.loaded_area
+                merged_dataframe.at[index, 'zipcode'] = pld_row.zipcode
                 
             except Exception as err:
                 # set package error to true
@@ -1113,7 +1141,7 @@ def history_merge_pld(df_history, df_pld):
                 errors += 1
                 
                 # log error
-                merge_error_log.append([i, j, err])                
+                merge_error_log.append([i, date, err])                
     # --------------------------------------- END MERGING CODE ------------------------------>
     
     # ----------------------------- CLEANUP AND TYPE CASTING -------------------------------->
@@ -1123,7 +1151,7 @@ def history_merge_pld(df_history, df_pld):
     # type casting for columns
     merged_dataframe.index = merged_dataframe.index.astype('int')    
     merged_dataframe['package_id'] = merged_dataframe['package_id'].astype('string')    
-    merged_dataframe['Order'] = merged_dataframe['Order'].astype('int')    
+    merged_dataframe['order'] = merged_dataframe['order'].astype('int')    
     merged_dataframe['date'] = merged_dataframe['date'].astype('string')   
     merged_dataframe['dow'] = merged_dataframe['dow'].astype('string')   
     merged_dataframe['station_code'] = merged_dataframe['station_code'].astype('int')   
