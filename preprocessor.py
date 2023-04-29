@@ -483,10 +483,8 @@ def set_filenames(file_list):
     FILES = file_list
 
 
-    
-    
-    
-    
+
+
 def append_filename(filename):
     """
     append_filename(filename) -> None
@@ -741,6 +739,9 @@ def get_error_log(log_type):
 # -------------------------------------------------------------------------------------------------------->
 # ------------------------------------------- END GETTERS AND SETTERS ------------------------------------>
 # -------------------------------------------------------------------------------------------------------->
+
+
+
 
 # -------------------------------------------------------------------------------------------------------->
 # -------------------------------------------------- DATAFRAME FUNCTIONS --------------------------------->
@@ -1443,12 +1444,26 @@ def clean_data():
     df_package = get_dataframe('package')
     df_history = get_dataframe('history')
     
+    # we want to align df_package and df_history to have the same packages in them
+    # df_history = package_align_history(df_package, df_history)
+    
+    # enforce date range of all packages to be within the start and end date range
+    # df_history = remove_history_dates(df_history)
+    
+    # modify history 'type' attribute to show status
+    # df_history = type_to_status(df_history)
+    
+    # truncate package histories to not show history after 'Delivery' status
+    # df_history = truncate_pkg_history(df_history)
+    
+    # convert the codes in the history dataframe
+    # df_history = recode_history(df_history)
+    
     print(df_aggregate)
     print(df_package)
     print(df_history)
     
     input("Press enter to continue...")
-    pass
 # -------------------------------------------------------------------------------------------------------->
 # ---------------------------------------------- END CLEAN DATA ------------------------------------------>
 # -------------------------------------------------------------------------------------------------------->
