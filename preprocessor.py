@@ -1427,7 +1427,37 @@ def recode_history(df_history):
         df_history[col] = df_history[col].astype(int).apply(lambda x: defaultDict[x])
 
     return df_history
-
+    
+    
+    
+    
+def package_align_history(df_package, df_history): 
+    # make copies of the dataframes
+    df_package_aligned = df_package.copy()
+    df_history_aligned = df_history.copy()
+    
+    hist_ids = pd.unique(df_history['package_id'])
+    package_ids = pd.unique(df_package['package_id'])
+    
+    # for every unique package id in df_package
+    for pkg in tqdm(package_ids):
+        # remove packages from df_package that are not in the df_history
+        if pkg not in hist_ids:
+            index = df_package_aligned[df_package_aligned['package_id'] == pkg].index
+            df_package_aligned = df_package_aligned.drop(index, axis=0)
+            
+    # for every unique package id in df_history
+    for pkg in tqdm(hist_ids):
+        # remove packages from df_history that are not in the df_package
+        if pkg not in package_ids:
+            indices = df_history_aligned[df_history_aligned['package_id'] == pkg].index        
+            df_history_aligned = df_history_aligned.drop(indices, axis=0)
+    
+    # reset the indices for both dataframes
+    df_history_aligned = df_history_aligned.reset_index(drop=True)
+    df_package_aligned = df_package_aligned.reset_index(drop=True)
+    
+    return df_package_aligned, df_history_aligned
 # -------------------------------------------------------------------------------------------------------->
 # -------------------------------------- END CLEANING FUNCTIONS ------------------------------------------>
 # -------------------------------------------------------------------------------------------------------->
@@ -1440,12 +1470,14 @@ def recode_history(df_history):
 # -------------------------------------------------------------------------------------------------------->
 def clean_data():
     # get copies of the current built dataframes
-    df_aggregate = get_dataframe('aggregate')
     df_package = get_dataframe('package')
     df_history = get_dataframe('history')
     
+    # remove packages that don't have a history
+    # remove_empty_pkg(df_package, df_history)
+    
     # we want to align df_package and df_history to have the same packages in them
-    # df_history = package_align_history(df_package, df_history)
+    df_package, df_history = package_align_history(df_package, df_history)    
     
     # enforce date range of all packages to be within the start and end date range
     # df_history = remove_history_dates(df_history)
@@ -1462,7 +1494,6 @@ def clean_data():
     # remove and resolve non-delivery area zipcodes
     # resolve_zipcodes(df_history)
     
-    print(df_aggregate)
     print(df_package)
     print(df_history)
     
