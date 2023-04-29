@@ -32,8 +32,8 @@ from collections import defaultdict
 
 #  Global Variables
 DATA_PATH = "data/"                 # Path to data
-OUTPUT_PATH = "compiled_data/"      # path for compiled data (dataframes)
-SCRIPT_PATH = "pre_data/"           # path for error logs and such
+OUTPUT_PATH = "compiled/"           # path for compiled data (dataframes)
+SCRIPT_PATH = "logs/"               # path for error logs and such
 FILES = []                          # File list
 START = datetime.date(2000, 1, 1)   # Start date in date range
 END = datetime.date(2000, 1, 1)     # End date in date range
@@ -1458,6 +1458,9 @@ def clean_data():
     
     # convert the codes in the history dataframe
     # df_history = recode_history(df_history)
+    
+    # remove and resolve non-delivery area zipcodes
+    # resolve_zipcodes(df_history)
     
     print(df_aggregate)
     print(df_package)
