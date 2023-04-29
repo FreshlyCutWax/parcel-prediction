@@ -163,7 +163,7 @@ def load_error_logs():
     script_path = get_path('script')
     
     # if save is successful or not
-    success = True
+    success = False
     
     # load build log and set to our global error log list, if it exists
     path = os.path.join(script_path, 'build_errors.pkl')
@@ -171,8 +171,7 @@ def load_error_logs():
         with open(path, 'rb') as handle:
             log = pickle.load(handle)
             set_error_log(log, 'build')
-    else:
-        success = False
+            success = True
     
     # load merge log and set to our global error log list, if it exists
     path = os.path.join(script_path, 'merge_errors.pkl')
@@ -180,13 +179,7 @@ def load_error_logs():
         with open(path, 'rb') as handle:
             log = pickle.load(handle)
             set_error_log(log, 'merge')
-    else:
-        success = False
-        
-    # set empty if no success in getting error logs
-    if success == False:
-        set_error_log([], 'build')
-        set_error_log([], 'merge')
+            success = True
         
     return success
     
