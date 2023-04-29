@@ -229,7 +229,7 @@ def menu(start_string, end_string):
     
     # menu options
     option_build  = FunctionItem("Build Dataframes", build_data, [])
-    option_clean  = MenuItem("Clean Dataframes [Not Functioning]")
+    option_clean  = FunctionItem("Clean Dataframes", clean_data, [])
     option_dates  = FunctionItem("Display All File Dates", display_dates, [])
     option_errors = FunctionItem("Show Errors", display_errors, [])
     option_show   = FunctionItem("Show Built Dataframes", display_dataframes, [])
@@ -669,11 +669,11 @@ def get_dataframe(df_type):
     
     df = None
     if df_type == 'aggregate':
-        df = DATAFRAMES[0]
+        df = DATAFRAMES[0].copy()
     elif df_type == 'package':
-        df = DATAFRAMES[1]
+        df = DATAFRAMES[1].copy()
     elif df_type == 'history':
-        df = DATAFRAMES[2]
+        df = DATAFRAMES[2].copy()
     else:
         df = None
         
@@ -923,8 +923,8 @@ def make_history_dataframe(xlsx_file, sheet_name):
     for i in df[['package_id', 'date', 'dow', 'type']].columns:
         df[i] = df[i].astype('string')
 
-    recodedDF = recode_history(df)
-    compress_history(recodedDF)
+    # recodedDF = recode_history(df)
+    # compress_history(recodedDF)
     return df
 
 
@@ -983,7 +983,7 @@ def make_pld_dataframe(xlsx_file,  sheet_name, date):
     
 
 def index_history(df_history):
-    df = df_history
+    df = df_history.copy()
     
     # add empty column for the order of events
     array_order = np.full((len(df)), 0, dtype='int')
@@ -1045,7 +1045,7 @@ def compare_dataframe(df_target, df_concat):
     
 def history_merge_pld(df_history, df_pld):
     # initialize new dataframe for the merge
-    merged_dataframe = df_history
+    merged_dataframe = df_history.copy()
 
     # all the unique package IDs from the history dataframe
     history_idx = pd.unique(merged_dataframe['package_id'])
@@ -1438,6 +1438,16 @@ def recode_history(df_history):
 # ---------------------------------------------- CLEAN DATA ---------------------------------------------->
 # -------------------------------------------------------------------------------------------------------->
 def clean_data():
+    # get copies of the current built dataframes
+    df_aggregate = get_dataframe('aggregate')
+    df_package = get_dataframe('package')
+    df_history = get_dataframe('history')
+    
+    print(df_aggregate)
+    print(df_package)
+    print(df_history)
+    
+    input("Press enter to continue...")
     pass
 # -------------------------------------------------------------------------------------------------------->
 # ---------------------------------------------- END CLEAN DATA ------------------------------------------>
