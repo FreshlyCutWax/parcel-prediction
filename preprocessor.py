@@ -1493,8 +1493,10 @@ def remove_empty_pkg(df_history):
     
     
 def remove_history_dates(df_history):
+    # get a copy of the history dataframe
     df = df_history.copy()
 
+    # get the date ranges
     start_date = get_start_date()
     end_date = get_end_date()
     
@@ -1506,9 +1508,11 @@ def remove_history_dates(df_history):
         # get the history for the package
         df_pkg = df_history[df_history['package_id'] == i]
         
+        # check all the dates for the package
         for d in df_pkg['date']:           
             pkg_date = str_to_date(d)   #datetime date from package history
             
+            # if package contains dates not in data range, remove package
             if pkg_date < start_date or pkg_date > end_date:
                 indices = df_pkg.index
                 df = df.drop(indices, axis=0)
@@ -1517,6 +1521,27 @@ def remove_history_dates(df_history):
     # reset the dataframe indices
     df = df.reset_index(drop=True)
                 
+    return df
+    
+    
+    
+    
+def remove_history_order(df_history):
+    # get a copy of the history dataframe
+    df = df_history.copy()
+
+    # get the unique package IDs
+    history_idx = pd.unique(df_history['package_id'])
+    
+    for i in tqdm(history_idx):
+        # df of the current package's history
+        df_pkg = df_history[df_history['package_id'] == i]
+        
+        # if the package 'order' index 0 is not present, remove package
+        if 0 not in df_pkg['order'].values:
+            indices = df_pkg.index
+            df = df.drop(indices, axis=0)
+    
     return df
 # -------------------------------------------------------------------------------------------------------->
 # -------------------------------------- END CLEANING FUNCTIONS ------------------------------------------>
@@ -1547,10 +1572,17 @@ def clean_data():
     df_history = remove_history_dates(df_history)
     print("Process #2 completed.", end='\n\n')
     
+    # remove packages that have incorrect history ordering (missing 0th index)
+    # some packages had weird 'Delivery' at first index, with date 9999/99/99
+    # those packages are now missing the first index, we need to remove them
+    print("Process #3: Fixing packages with ordering issues...")
+    df_history = remove_history_order(df_history)
+    print("Process #3 completed.", end='\n\n')
+    
     # we want to align df_package and df_history to have the same packages in them
-    print("Process #3: Aligning the package and history dataframes...")
+    print("Process #4: Aligning the package and history dataframes...")
     df_package, df_history = package_align_history(df_package, df_history)
-    print("Process #3 completed.", end='\n\n')        
+    print("Process #4 completed.", end='\n\n')        
     
     # modify history 'type' attribute to show status
     # df_history = type_to_status(df_history)
