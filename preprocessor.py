@@ -1488,6 +1488,36 @@ def remove_empty_pkg(df_history):
     df = df.reset_index(drop=True)
     
     return df
+    
+    
+    
+    
+def remove_history_dates(df_history):
+    df = df_history.copy()
+
+    start_date = get_start_date()
+    end_date = get_end_date()
+    
+    # get all the unique package IDs
+    history_idx = pd.unique(df_history['package_id'])
+    
+    # for every unique package in the history dataframe
+    for i in tqdm(history_idx):
+        # get the history for the package
+        df_pkg = df_history[df_history['package_id'] == i]
+        
+        for d in df_pkg['date']:           
+            pkg_date = str_to_date(d)   #datetime date from package history
+            
+            if pkg_date < start_date or pkg_date > end_date:
+                indices = df_pkg.index
+                df = df.drop(indices, axis=0)
+                break
+                
+    # reset the dataframe indices
+    df = df.reset_index(drop=True)
+                
+    return df
 # -------------------------------------------------------------------------------------------------------->
 # -------------------------------------- END CLEANING FUNCTIONS ------------------------------------------>
 # -------------------------------------------------------------------------------------------------------->
@@ -1512,13 +1542,15 @@ def clean_data():
     df_history = remove_empty_pkg(df_history)
     print("Process #1 completed.", end='\n\n')
     
-    # we want to align df_package and df_history to have the same packages in them
-    print("Process #2: Aligning the package and history dataframes...")
-    df_package, df_history = package_align_history(df_package, df_history)
-    print("Process #1 completed.", end='\n\n')
-    
     # enforce date range of all packages to be within the start and end date range
-    # df_history = remove_history_dates(df_history)
+    print("Process #2: Enforcing date range for the history dataframe...")
+    df_history = remove_history_dates(df_history)
+    print("Process #2 completed.", end='\n\n')
+    
+    # we want to align df_package and df_history to have the same packages in them
+    print("Process #3: Aligning the package and history dataframes...")
+    df_package, df_history = package_align_history(df_package, df_history)
+    print("Process #3 completed.", end='\n\n')        
     
     # modify history 'type' attribute to show status
     # df_history = type_to_status(df_history)
@@ -1646,8 +1678,13 @@ def main(args):
     # attempt to get the range of dates from the files
     start_date = capture_file_date(files[0])
     end_date = capture_file_date(files[len(files)-1]) 
+    
+    set_start_date(start_date)
+    set_end_date(end_date)
+    
     start_string = "Start Date: " + str(start_date)
     end_string = "End Date: " + str(end_date)
+    
     
     # load dataframes and error logs
     load_df_success = load_dataframes()
