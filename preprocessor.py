@@ -1427,7 +1427,7 @@ def recode_history(df_history):
         df_history[col] = df_history[col].astype(int).apply(lambda x: defaultDict[x])
 
     return df_history
-    
+  
     
     
     
@@ -1436,18 +1436,23 @@ def package_align_history(df_package, df_history):
     df_package_aligned = df_package.copy()
     df_history_aligned = df_history.copy()
     
+    # get the unique package IDs in both df_package and df_history
     hist_ids = pd.unique(df_history['package_id'])
     package_ids = pd.unique(df_package['package_id'])
     
     # for every unique package id in df_package
-    for pkg in tqdm(package_ids):
+    pbar = tqdm(package_ids)
+    pbar.set_description("df_package")
+    for pkg in pbar:
         # remove packages from df_package that are not in the df_history
         if pkg not in hist_ids:
             index = df_package_aligned[df_package_aligned['package_id'] == pkg].index
             df_package_aligned = df_package_aligned.drop(index, axis=0)
             
     # for every unique package id in df_history
-    for pkg in tqdm(hist_ids):
+    pbar = tqdm(hist_ids)
+    pbar.set_description("df_history")
+    for pkg in pbar:
         # remove packages from df_history that are not in the df_package
         if pkg not in package_ids:
             indices = df_history_aligned[df_history_aligned['package_id'] == pkg].index        
@@ -1458,6 +1463,31 @@ def package_align_history(df_package, df_history):
     df_package_aligned = df_package_aligned.reset_index(drop=True)
     
     return df_package_aligned, df_history_aligned
+    
+    
+    
+    
+def remove_empty_pkg(df_history):
+    # get a copy of the history dataframe
+    df = df_history.copy()
+    
+    # get all the unique package IDs
+    history_idx = pd.unique(df_history['package_id'])
+    
+    # for every unique package in the history dataframe
+    for i in tqdm(history_idx):
+        # get the history for the package
+        df_pkg = df_history[df_history['package_id'] == i]
+        
+        # if only entry or less is present in the package's history, remove package
+        if len(df_pkg) <= 1:
+            indices = df_pkg.index
+            df = df.drop(indices, axis=0)
+            
+    # reset the dataframe indices
+    df = df.reset_index(drop=True)
+    
+    return df
 # -------------------------------------------------------------------------------------------------------->
 # -------------------------------------- END CLEANING FUNCTIONS ------------------------------------------>
 # -------------------------------------------------------------------------------------------------------->
@@ -1473,11 +1503,19 @@ def clean_data():
     df_package = get_dataframe('package')
     df_history = get_dataframe('history')
     
+    print("Original df_package length:", len(df_package))
+    print("Original df_history length:", len(df_history))
+    print("\n\n")
+    
     # remove packages that don't have a history
-    # remove_empty_pkg(df_package, df_history)
+    print("Process #1: Removing packages with unusable histories...")
+    df_history = remove_empty_pkg(df_history)
+    print("Process #1 completed.", end='\n\n')
     
     # we want to align df_package and df_history to have the same packages in them
-    df_package, df_history = package_align_history(df_package, df_history)    
+    print("Process #2: Aligning the package and history dataframes...")
+    df_package, df_history = package_align_history(df_package, df_history)
+    print("Process #1 completed.", end='\n\n')
     
     # enforce date range of all packages to be within the start and end date range
     # df_history = remove_history_dates(df_history)
@@ -1496,6 +1534,9 @@ def clean_data():
     
     print(df_package)
     print(df_history)
+    
+    print("New df_package length:", len(df_package))
+    print("New df_history length:", len(df_history))
     
     input("Press enter to continue...")
 # -------------------------------------------------------------------------------------------------------->
