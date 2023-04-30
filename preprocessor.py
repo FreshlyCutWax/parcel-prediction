@@ -1541,6 +1541,43 @@ def remove_history_order(df_history):
         if 0 not in df_pkg['order'].values:
             indices = df_pkg.index
             df = df.drop(indices, axis=0)
+            
+    # reset the dataframe indices
+    df = df.reset_index(drop=True)
+    
+    return df
+    
+    
+    
+    
+
+def truncate_pkg_history(df_history):
+    # get a copy of the history dataframe
+    df = df_history.copy()
+    
+    # get the unique package IDs
+    history_idx = pd.unique(df_history['package_id'])
+    
+    for i in tqdm(history_idx):
+        # df of the current package's history
+        df_pkg = df_history[df_history['package_id'] == i]
+        
+        # if there is any 'Delivery' status for the package
+        if 'Delivery' in df_pkg['type'].values:
+            #get order indices of when the package has 'Delivery' status
+            pkg_delivery = df_pkg.query("type=='Delivery'")['order'].values
+            
+            # get the last order index with 'Delivery' status
+            last_delivery = pkg_delivery[len(pkg_delivery)-1]
+            
+            # get any indices that might occur after last 'Delivery' status
+            index_after_delivery = df_pkg[df_pkg['order'] > last_delivery].index
+            
+            # remove those indices after the last 'Delivery' status
+            df = df.drop(index_after_delivery, axis=0)
+    
+    # reset the dataframe indices
+    df = df.reset_index(drop=True)
     
     return df
 # -------------------------------------------------------------------------------------------------------->
@@ -1575,20 +1612,22 @@ def clean_data():
     # remove packages that have incorrect history ordering (missing 0th index)
     # some packages had weird 'Delivery' at first index, with date 9999/99/99
     # those packages are now missing the first index, we need to remove them
-    print("Process #3: Fixing packages with ordering issues...")
+    print("Process #3: Removing packages with ordering issues...")
     df_history = remove_history_order(df_history)
     print("Process #3 completed.", end='\n\n')
     
+    # truncate package histories to not show history after 'Delivery' status
+    print("Process #4: Truncating package histories after 'Delivery' status...")
+    df_history = truncate_pkg_history(df_history)
+    print("Process #4 completed.", end='\n\n')
+    
     # we want to align df_package and df_history to have the same packages in them
-    print("Process #4: Aligning the package and history dataframes...")
+    print("Process #5: Aligning the package and history dataframes...")
     df_package, df_history = package_align_history(df_package, df_history)
-    print("Process #4 completed.", end='\n\n')        
+    print("Process #5 completed.", end='\n\n')        
     
     # modify history 'type' attribute to show status
     # df_history = type_to_status(df_history)
-    
-    # truncate package histories to not show history after 'Delivery' status
-    # df_history = truncate_pkg_history(df_history)
     
     # convert the codes in the history dataframe
     # df_history = recode_history(df_history)
