@@ -1411,22 +1411,25 @@ def build_data():
 # ------------------------------------------ CLEANING FUNCTIONS ------------------------------------------>
 # -------------------------------------------------------------------------------------------------------->
 def recode_history(df_history):
+    # make a copy of the history dataframe
+    df = df_history.copy()
+
     # Recodes List
     recode_dict = {1: {1, 4, 7, 11, 36, 57, 59, 82, 83}, 2: {15, 34, 47, 94, 100}, 3: {40, 300},
                    4: {33, 35, 42, 43, 51, 52, 53, 54, 56, 63, 67, 68}, 5: {12, 16, 27, 37},
                    6: {2, 3, 17}, 7: {85}, 8: {6, 81}, 9: {10}}
 
     # Use default_dict so that codes other than recodes default to 0
-    defaultDict = defaultdict(lambda: 0)
+    default_dict = defaultdict(lambda: 0)
     for k, v in recode_dict.items():
         for vv in v:
-            defaultDict[vv] = k
+            default_dict[vv] = k
 
     # Do the recoding
-    for col in ["Driver Code", "Station Code"]:
-        df_history[col] = df_history[col].astype(int).apply(lambda x: defaultDict[x])
+    for col in ["driver_code", "station_code"]:
+        df[col] = df[col].astype(int).apply(lambda x: default_dict[x])
 
-    return df_history
+    return df
   
     
     
@@ -1580,6 +1583,34 @@ def truncate_pkg_history(df_history):
     df = df.reset_index(drop=True)
     
     return df
+    
+    
+    
+    
+def fix_area_digits(df_history):
+    # get a copy of the history dataframe
+    df = df_history.copy()
+    
+    # narrow down to rows with a 'loaded_area' value
+    df_area = df[df['loaded_area'].values != 0]
+    
+    # narrow down to rows with 'loaded_area' digits is more than 3
+    df_area = df_area[(np.floor(np.log10(df_area['loaded_area'].values))+1).astype('int') > 3]
+    
+    # narrow down to rows that also has a 'assigned_area' value
+    df_area = df_area[df_area['assigned_area'].values != 0]
+    
+    # narrow down to rows where 'assigned_area' and 'loaded_area' has matching 3 digits
+    df_area = df_area[df_area['loaded_area'].values // 10 == df_area['assigned_area'].values]
+    
+    # correct 'assigned_area' by replacing with 'loaded_area' values
+    for i in df_area.itertuples():
+        index = i.Index
+        value = i.loaded_area
+        
+        df.at[index, 'assigned_area'] = value
+        
+    return df   
 # -------------------------------------------------------------------------------------------------------->
 # -------------------------------------- END CLEANING FUNCTIONS ------------------------------------------>
 # -------------------------------------------------------------------------------------------------------->
@@ -1624,13 +1655,20 @@ def clean_data():
     # we want to align df_package and df_history to have the same packages in them
     print("Process #5: Aligning the package and history dataframes...")
     df_package, df_history = package_align_history(df_package, df_history)
-    print("Process #5 completed.", end='\n\n')        
+    print("Process #5 completed.", end='\n\n')
     
     # modify history 'type' attribute to show status
     # df_history = type_to_status(df_history)
     
     # convert the codes in the history dataframe
-    # df_history = recode_history(df_history)
+    print("Process #7: Recoding the main codes...")
+    df_history = recode_history(df_history)
+    print("Process #7 completed.", end='\n\n') 
+    
+    # fix the loaded_area attribute in history dataframe
+    print("Process #8: Fixing loaded_area digits in history dataframe...")
+    df_history = fix_area_digits(df_history)
+    print("Process #8 completed.", end='\n\n') 
     
     # remove and resolve non-delivery area zipcodes
     # resolve_zipcodes(df_history)
