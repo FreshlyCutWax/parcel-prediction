@@ -1901,6 +1901,44 @@ def fix_zipcode_provider(df_history):
     #<----------------------ZIPCODES/PROVIDERS COMPLETE------------------------>
     
     return df 
+    
+    
+    
+    
+def type_to_status(df_history):
+    # make a copy of the history dataframe
+    df = df_history.copy()
+    
+    # rename the columns
+    df = df.rename(columns={'type' : 'status'})
+    
+    # change 'Status Code' value to 'code'
+    df['status'] = df['status'].str.replace('Status Code', 'S')
+    
+    # change 'Delivery' value to 'delivery'
+    df['status'] = df['status'].str.replace('Delivery', 'D')
+    
+    # get all the unique package IDs
+    history_idx = pd.unique(df_history['package_id'])
+    
+    # add a no delivery status as 'X' if no delivery status
+    for i in tqdm(history_idx):
+        # dataframe of the current package
+        df_pkg = df[df['package_id'] == i]
+        
+        # all the status values of the current package
+        status = df_pkg['status'].values
+        
+        # add no delivery status 'X' if delivery status not present
+        if 'D' not in status:
+            # get the index of the last entry for the package
+            indices = df_pkg.index
+            index = indices[len(indices)-1]
+            
+            # set no delivery status in our dataframe
+            df.at[index, 'status'] = 'X'
+            
+    return df
 # -------------------------------------------------------------------------------------------------------->
 # -------------------------------------- END CLEANING FUNCTIONS ------------------------------------------>
 # -------------------------------------------------------------------------------------------------------->
@@ -1915,8 +1953,6 @@ def clean_data():
     # get copies of the current built dataframes
     df_package = get_dataframe('package')
     df_history = get_dataframe('merged')
-    
-    print(df_history)
     
     print("Original df_package length:", len(df_package))
     print("Original df_history length:", len(df_history))
@@ -1942,33 +1978,32 @@ def clean_data():
     # truncate package histories to not show history after 'Delivery' status
     print("Process #4: Truncating package histories after 'Delivery' status...")
     df_history = truncate_pkg_history(df_history)
-    print("Process #4 completed.", end='\n\n')
-
-    # modify history 'type' attribute to show status
-    # df_history = type_to_status(df_history)
+    print("Process #4 completed.", end='\n\n')    
     
     # convert the codes in the history dataframe
-    print("Process #6: Recoding the codes...")
+    print("Process #5: Recoding the codes...")
     df_history = recode_history(df_history)
-    print("Process #6 completed.", end='\n\n')     
+    print("Process #5 completed.", end='\n\n')     
     
     # fix the loaded_area attribute in history dataframe
-    print("Process #7: Fixing loaded_area digits in history dataframe...")
+    print("Process #6: Fixing loaded_area digits in history dataframe...")
     df_history = fix_area_digits(df_history)
-    print("Process #7 completed.", end='\n\n') 
+    print("Process #6 completed.", end='\n\n') 
     
     # remove and resolve non-delivery area zipcodes
-    print("Process #8: Fixing zipcodes and Providers...")
+    print("Process #7: Fixing zipcodes and Providers...")
     fix_zipcode_provider(df_history)
-    print("Process #8 completed.", end='\n\n') 
+    print("Process #7 completed.", end='\n\n') 
     
-    # add 'No Delivery' label to history
-    # df_history = add_class_label(df_history)
+    # modify history 'type' attribute to show status
+    print("Process #8: Transforming 'type' attribute and adding no delivery status...")
+    df_history = type_to_status(df_history)
+    print("Process #8 completed.", end='\n\n')
     
     # we want to align df_package and df_history to have the same packages in them
-    print("Process #10: Aligning the package and history dataframes...")
+    print("Process #9: Aligning the package and history dataframes...")
     df_package, df_history = package_align_history(df_package, df_history)
-    print("Process #10 completed.", end='\n\n')
+    print("Process #9 completed.", end='\n\n')
     
     print(df_package)
     print(df_history)
