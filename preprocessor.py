@@ -1808,7 +1808,9 @@ def fix_zipcode_provider(df_history):
     
     #<---------------------------FIX ZIPCODES/PROVIDERS------------------------>
     # iterate over all the rows in history dataframe
-    for row in df_history.itertuples():
+    pbar = tqdm(df_history.itertuples())
+    pbar.set_description("Fixing")
+    for row in pbar:
         # if the zipcode is not in the area
         if row.zipcode and row.zipcode not in zip_list:
             # if we have an assigned area and it's in our dictionary
@@ -1899,6 +1901,17 @@ def fix_zipcode_provider(df_history):
                 # set area for the right index
                 df.at[row.Index, 'assigned_area'] = area
     #<----------------------ZIPCODES/PROVIDERS COMPLETE------------------------>
+    
+    # get unique package IDs
+    df_idx = pd.unique(df_history['package_id'])
+
+    # remove packages with their provider as 'None'
+    for i in tqdm(df_idx):
+        df_pkg = df[df['package_id'] == i]
+        
+        if 'None' in df_pkg['provider'].values:
+            indices = df_pkg.index
+            df = df.drop(indices, axis=0)
     
     return df 
     
