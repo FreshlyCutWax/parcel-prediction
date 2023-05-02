@@ -16,6 +16,7 @@ import os
 import datetime
 import pickle
 import time
+from collections import defaultdict
 
 # progress bar
 from tqdm import tqdm
@@ -26,7 +27,7 @@ from consolemenu.items import *
 
 # warning handling
 import warnings
-from collections import defaultdict
+
 
 
 
@@ -37,7 +38,7 @@ SCRIPT_PATH = "logs/"               # path for error logs and such
 FILES = []                          # File list
 START = datetime.date(2000, 1, 1)   # Start date in date range
 END = datetime.date(2000, 1, 1)     # End date in date range
-DATAFRAMES = [[], [], []]           # dataframes [df_aggregate, df_package, df_history]
+DATAFRAMES = [[], [], [], []]       # dataframes [df_aggregate, df_package, df_history]
 ERROR_LOGS = [[], [], []]           # Error logs [build_errors, merge_errors, clean_errors]
 
 # ignore warnings
@@ -116,6 +117,14 @@ def load_dataframes():
     else:
         success = False
         
+    # get pld dataframe
+    path = os.path.join(output_path, 'df_pld.pkl')
+    if os.path.isfile(path):
+        df = pd.read_pickle(path)
+        set_dataframe(df, 'pld')
+    else:
+        success = False
+        
     # set empty if no success in getting dataframes
     if success == False:
         set_dataframe([], 'aggregate')
@@ -148,6 +157,11 @@ def store_dataframes():
         # save history
         path = os.path.join(output_path, 'df_history.pkl')
         df = get_dataframe('history')
+        df.to_pickle(path)
+        
+        # save pld
+        path = os.path.join(output_path, 'df_pld.pkl')
+        df = get_dataframe('pld')
         df.to_pickle(path)
         
         success = True
@@ -229,6 +243,7 @@ def menu(start_string, end_string):
     
     # menu options
     option_build  = FunctionItem("Build Dataframes", build_data, [])
+    option_merge  = FunctionItem("Merge Dataframes", history_merge_pld, [])
     option_clean  = FunctionItem("Clean Dataframes", clean_data, [])
     option_dates  = FunctionItem("Display All File Dates", display_dates, [])
     option_errors = FunctionItem("Show Errors", display_errors, [])
@@ -236,6 +251,7 @@ def menu(start_string, end_string):
     
     # add options to the menu
     main_menu.append_item(option_build)
+    main_menu.append_item(option_merge)
     main_menu.append_item(option_clean)
     main_menu.append_item(option_dates)
     main_menu.append_item(option_errors)
@@ -644,6 +660,8 @@ def set_dataframe(df, df_type):
         DATAFRAMES[1] = df      
     elif df_type == 'history':
         DATAFRAMES[2] = df
+    elif df_type == 'pld':
+        DATAFRAMES[3] = df
     else:
         print("", end="")
     
@@ -672,6 +690,8 @@ def get_dataframe(df_type):
         df = DATAFRAMES[1].copy()
     elif df_type == 'history':
         df = DATAFRAMES[2].copy()
+    elif df_type == 'pld':
+        df = DATAFRAMES[3].copy()
     else:
         df = None
         
@@ -1040,112 +1060,6 @@ def compare_dataframe(df_target, df_concat):
             df = df[df['package_id'] != i]
             
     return df
-
-
-    
-    
-def history_merge_pld(df_history, df_pld):
-    # initialize new dataframe for the merge
-    merged_dataframe = df_history.copy()
-
-    # all the unique package IDs from the history dataframe
-    history_idx = pd.unique(merged_dataframe['package_id'])
-    
-    # add PLD columns to the history dataframe
-    pld_columns = df_pld[['provider', 'assigned_area', 'loaded_area', 'zipcode']].columns
-    
-    # build blank columns for PLD data
-    array_provider = np.full((len(merged_dataframe)), '', dtype='str')
-    array_assigned_area = np.full((len(merged_dataframe)), 0, dtype='int')
-    array_loaded_area = np.full((len(merged_dataframe)), 0, dtype='int')
-    array_zipcode = np.full((len(merged_dataframe)), 0, dtype='int')
-    
-    # insert new columns into package's history dataframe
-    merged_dataframe.insert(loc=len(merged_dataframe.columns), column='provider', value=array_provider)
-    merged_dataframe.insert(loc=len(merged_dataframe.columns), column='assigned_area', value=array_assigned_area)
-    merged_dataframe.insert(loc=len(merged_dataframe.columns), column='loaded_area', value=array_loaded_area)
-    merged_dataframe.insert(loc=len(merged_dataframe.columns), column='zipcode', value=array_zipcode)
-    
-    # ------------------------------------------- MERGING CODE ------------------------------>
-    
-    # error tracking for the loop below
-    merge_error_log = []
-    errors = 0
-    pkg_error = False
-    
-    # loop over all the individual packages in history
-    for i in tqdm(history_idx):
-        # collect and reset error
-        if pkg_error == True:           
-            pkg_error = False
-    
-        # get the package's history
-        pkg_hist = df_history[df_history['package_id'] == i]
-        
-        # get the package's pld data
-        pkg_pld = df_pld[df_pld['package_id'] == i]
-        
-        # for each entry for the package in the PLD dataframe
-        for pld_row in pkg_pld.itertuples():
-            
-            # get the date for the PLD entry
-            date = pld_row.date
-          
-            try:
-                # index to access the appropriate package history cells in the history df
-                index = np.NaN
-                
-                # get dataframe from package's history for the PLD date
-                pkg_hist_date = pkg_hist[pkg_hist['date'] == date]
-            
-                # iterate over the history for the package on the current date
-                # we are looking for the matching driver code
-                # we want to insert the PLD data for the package there
-                for hist_row in pkg_hist_date.itertuples():               
-                    # if you find the appropriate index, stop iterating
-                    if hist_row.driver_code == pld_row.driver_code:
-                        index = hist_row.Index
-                        break
-                
-                # if finding the right index fails
-                if index == np.NaN:                
-                    # get the index for the first valid entry for the date
-                    index = pkg_hist_date.first_valid_index()
-                    
-                merged_dataframe.at[index, 'provider'] = pld_row.provider
-                merged_dataframe.at[index, 'assigned_area'] = pld_row.assigned_area
-                merged_dataframe.at[index, 'loaded_area'] = pld_row.loaded_area
-                merged_dataframe.at[index, 'zipcode'] = pld_row.zipcode
-                
-            except Exception as err:
-                # set package error to true
-                pkg_error = True
-                errors += 1
-                
-                # log error
-                merge_error_log.append([i, date, err])                
-    # --------------------------------------- END MERGING CODE ------------------------------>
-    
-    # ----------------------------- CLEANUP AND TYPE CASTING -------------------------------->
-    # drop missing values
-    merged_dataframe = merged_dataframe.dropna()
-    
-    # type casting for columns
-    merged_dataframe.index = merged_dataframe.index.astype('int')    
-    merged_dataframe['package_id'] = merged_dataframe['package_id'].astype('string')    
-    merged_dataframe['order'] = merged_dataframe['order'].astype('int')    
-    merged_dataframe['date'] = merged_dataframe['date'].astype('string')   
-    merged_dataframe['dow'] = merged_dataframe['dow'].astype('string')   
-    merged_dataframe['station_code'] = merged_dataframe['station_code'].astype('int')   
-    merged_dataframe['driver_code'] = merged_dataframe['driver_code'].astype('int')   
-    merged_dataframe['reason'] = merged_dataframe['reason'].astype('int')            
-    merged_dataframe['zipcode'] = merged_dataframe['zipcode'].astype('int')    
-    merged_dataframe['provider'] = merged_dataframe['provider'].astype('string')    
-    merged_dataframe['assigned_area'] = merged_dataframe['assigned_area'].astype('int')
-    merged_dataframe['loaded_area'] = merged_dataframe['loaded_area'].astype('int')
-    # ------------------------- END CLEANUP AND TYPE CASTING -------------------------------->
-            
-    return merged_dataframe, merge_error_log
 # -------------------------------------------------------------------------------------------------------->    
 # ---------------------------------------------- END DATAFRAME FUNCTIONS --------------------------------->
 # -------------------------------------------------------------------------------------------------------->
@@ -1359,11 +1273,12 @@ def build_data():
     print("PLD dataframe complete.", end='\n\n')
     # ----------------- PLD dataframe complete --------------------->
     
-    
+    """
     # !!! MERGE PLD WITH HISTORY !!!
     print("Merging df_history and df_pld...")
     df_history, merge_error_log = history_merge_pld(df_history, df_pld)
     print("Merging complete.", end='\n\n')
+    """
     
     # !!! BUILDING DATA IS NOW COMPLETE !!!
     
@@ -1372,17 +1287,18 @@ def build_data():
     set_dataframe(df_aggregate, 'aggregate')
     set_dataframe(df_package, 'package')
     set_dataframe(df_history, 'history')
+    set_dataframe(df_pld, 'pld')
     
     # save the dataframes in a file
     df_save_success = store_dataframes()
     
     # Get the error counts
     build_error_count = len(build_error_log)
-    merge_error_count = len(merge_error_log)
+    #merge_error_count = len(merge_error_log)
     
     # store the error logs in our global list
     set_error_log(build_error_log, 'build')
-    set_error_log(merge_error_log, 'merge')
+    #set_error_log(merge_error_log, 'merge')
             
     # save the errors in a file
     err_save_success = store_error_logs()
@@ -1394,7 +1310,7 @@ def build_data():
     print("Dataframes have been built.", end='\n')
     print("Total sample size (Packages):", len(df_package))
     print("Build errors:", build_error_count)
-    print("Merge errors:", merge_error_count, end='\n')
+    #print("Merge errors:", merge_error_count, end='\n')
     print("Dataframes successfully saved:", df_save_success)
     print("Error logs successfully saved:", err_save_success, end='\n\n')
     
@@ -1402,6 +1318,147 @@ def build_data():
     input("Press enter to continue...")
 # -------------------------------------------------------------------------------------------------------->
 # ---------------------------------------------- END BUILD DATA ------------------------------------------>
+# -------------------------------------------------------------------------------------------------------->
+
+
+
+
+# -------------------------------------------------------------------------------------------------------->
+# -------------------------------------------------- MERGE DATA ------------------------------------------>
+# -------------------------------------------------------------------------------------------------------->
+def history_merge_pld():
+    # get existing dataframes
+    df_history = get_dataframe('history')
+    df_pld = get_dataframe('pld')
+    
+    # new dataframe for merging
+    merged_dataframe = df_history.copy()
+
+    # all the unique package IDs from the history dataframe
+    history_idx = pd.unique(df_history['package_id'])
+    
+    # add PLD columns to the history dataframe
+    pld_columns = df_pld[['provider', 'assigned_area', 'loaded_area', 'zipcode']].columns
+    
+    # build blank columns for PLD data
+    array_provider = np.full((len(merged_dataframe)), '', dtype='str')
+    array_assigned_area = np.full((len(merged_dataframe)), 0, dtype='int')
+    array_loaded_area = np.full((len(merged_dataframe)), 0, dtype='int')
+    array_zipcode = np.full((len(merged_dataframe)), 0, dtype='int')
+    
+    # insert new columns into package's history dataframe
+    merged_dataframe.insert(loc=len(merged_dataframe.columns), column='provider', value=array_provider)
+    merged_dataframe.insert(loc=len(merged_dataframe.columns), column='assigned_area', value=array_assigned_area)
+    merged_dataframe.insert(loc=len(merged_dataframe.columns), column='loaded_area', value=array_loaded_area)
+    merged_dataframe.insert(loc=len(merged_dataframe.columns), column='zipcode', value=array_zipcode)
+    
+    # ------------------------------------------- MERGING CODE ------------------------------>
+    print("Merging df_history and df_pld...")
+    
+    # error tracking for the loop below
+    merge_error_log = []
+    errors = 0
+    pkg_error = False
+    
+    pbar = tqdm(history_idx)
+    pbar.set_description('Errors: 0')
+    # loop over all the individual packages in history
+    for i in pbar:
+        # collect and reset error
+        if pkg_error == True:           
+            pkg_error = False
+            pbar_error = 'Errors: ' + str(errors)
+            pbar.set_description(pbar_error)
+    
+        # get the package's history
+        pkg_hist = df_history[df_history['package_id'] == i]
+        
+        # get the package's pld data
+        pkg_pld = df_pld[df_pld['package_id'] == i]
+        
+        # for each entry for the package in the PLD dataframe
+        for pld_row in pkg_pld.itertuples():
+            
+            # get the date for the PLD entry
+            date = pld_row.date
+          
+            try:
+                # get dataframe from package's history for the PLD date
+                pkg_hist_date = pkg_hist[pkg_hist['date'] == date]
+                
+                # get the first entry for date in package's history
+                index = pkg_hist_date.index[0]
+                
+                # merge data into the dataframe
+                merged_dataframe.at[index, 'provider'] = pld_row.provider
+                merged_dataframe.at[index, 'assigned_area'] = pld_row.assigned_area
+                merged_dataframe.at[index, 'loaded_area'] = pld_row.loaded_area
+                merged_dataframe.at[index, 'zipcode'] = pld_row.zipcode
+                
+            except Exception as err:
+                # set package error to true
+                pkg_error = True
+                errors += 1
+                
+                # log error
+                merge_error_log.append([i, date, err])                
+    # --------------------------------------- END MERGING CODE ------------------------------>
+    
+    # ----------------------------- CLEANUP AND TYPE CASTING -------------------------------->
+    # drop missing values
+    merged_dataframe = merged_dataframe.dropna()
+    
+    # type casting for columns
+    merged_dataframe.index = merged_dataframe.index.astype('int')    
+    merged_dataframe['package_id'] = merged_dataframe['package_id'].astype('string')    
+    merged_dataframe['order'] = merged_dataframe['order'].astype('int')    
+    merged_dataframe['date'] = merged_dataframe['date'].astype('string')   
+    merged_dataframe['dow'] = merged_dataframe['dow'].astype('string')   
+    merged_dataframe['station_code'] = merged_dataframe['station_code'].astype('int')   
+    merged_dataframe['driver_code'] = merged_dataframe['driver_code'].astype('int')   
+    merged_dataframe['reason'] = merged_dataframe['reason'].astype('int')            
+    merged_dataframe['zipcode'] = merged_dataframe['zipcode'].astype('int')    
+    merged_dataframe['provider'] = merged_dataframe['provider'].astype('string')    
+    merged_dataframe['assigned_area'] = merged_dataframe['assigned_area'].astype('int')
+    merged_dataframe['loaded_area'] = merged_dataframe['loaded_area'].astype('int')
+    # ------------------------- END CLEANUP AND TYPE CASTING -------------------------------->
+    
+    
+    print("----------------------------------")
+    print("---------MERGE SUCCESS------------")
+    print("----------------------------------")
+    print("Merging completed.")
+    print("Merge errors:", errors)
+    print("\n\n")
+    
+    # save merged dataframe prompt
+    while True:
+        print("Saving the merged dataframe will overwrite df_history.")
+        option = input("Would you like to save? [Y/N] >: ")
+        print("\n\n")
+        
+        if option.upper() == 'Y':
+            # set and save dataframe
+            set_dataframe(merged_dataframe, 'history')
+            save_success = store_dataframes()
+            
+            #set and save error logs
+            set_error_log(merge_error_log, 'merge')
+            save_log_success = store_error_logs()
+            
+            print("Dataframe saved successfully:", save_success)
+            print("Error log saved successfully:", save_log_success)
+            input("Press enter to continue...")
+            break
+        elif option.upper() == 'N':
+            print("Merged dataframe not saved.")
+            input("Press enter to continue...")
+            break
+        else:
+            print("Not a valid option.")
+            print("\n\n")    
+# -------------------------------------------------------------------------------------------------------->
+# ---------------------------------------------- END MERGE DATA ------------------------------------------>
 # -------------------------------------------------------------------------------------------------------->
 
 
@@ -1610,7 +1667,55 @@ def fix_area_digits(df_history):
         
         df.at[index, 'assigned_area'] = value
         
-    return df   
+    return df
+    
+    
+    
+    
+def fix_zipcode_provider(df_history):
+    # get a copy of the history dataframe
+    df = df_history.copy()
+    
+    # original zip code dictionary
+    zip_dict = {'H': [65604, 65605, 65612, 65613, 65617, 65635, 65645, 65646, 65661, \
+                      65663, 65664, 65674, 65682, 65707, 65710, 65712, 65721, 65725, \
+                      65727, 65752, 65769, 65770, 65767, 65803, 65804], \
+        'B': [65590, 65622, 65632, 65644, 65648, 65685, 65706, 65713, 65722, \
+            65757, 65764, 65783, 65786, 65787, 65667, 65662, 65767], \
+        'C': [65608, 65614, 65618, 65620, 65627, 65629, 65637, 65638, 65653, \
+              65655, 65657, 65666, 65676, 65679, 65680, 65701, 65715, 65720, \
+              65729, 65731, 65733, 65741, 65744, 65753, 65755, 65759, 65760, \
+              65761, 65762, 65768], \
+        'F': [65610, 65631, 65705, 65738, 65781, 65633, 65619, 65802, 65803, 65807], \
+        'A': [65611, 65615, 65616, 65624, 65630, 65641, 65656, 65658, 65669, \
+              65672, 65675, 65681, 65686, 65726, 65728, 65737, 65739, 65740, \
+              65747, 65754, 65771], \
+        'K': [65609, 65626, 65660, 65689, 65766, 65775, 65776, 65777, 65788, \
+              65789, 65790, 65793], \
+        'D': [64738, 64776, 65324, 65326, 65355, 65601, 65603, 65634, 65640, \
+            65649, 65650, 65668, 65724, 65732, 65735, 65774, 65779, 65785, \
+            64781, 65607], \
+        'G': [65742, 65765, 65809, 65802, 65807, 65804], \
+        'J': [65714, 65801, 65806, 65808, 65810, 65897, 65898, 65899, 65619, \
+            65802, 65803, 65804, 65807], \
+        'E': [65636, 65652, 65702, 65704, 65711, 65717, 65746]}
+        
+    # transform the the zip code dictionary into something useful
+    zip_provider_dict = {}
+    for p, z in zip_dict.items():
+        for zz in z:
+            if zz not in zip_provider_dict:
+                zip_provider_dict[zz] = p
+    
+    # list of all the zipcodes from history
+    zip_list = []
+    
+    # dictionary to hold area assignments to providers
+    zip_area_dict = {}
+    
+    
+    
+    pass
 # -------------------------------------------------------------------------------------------------------->
 # -------------------------------------- END CLEANING FUNCTIONS ------------------------------------------>
 # -------------------------------------------------------------------------------------------------------->
@@ -1651,19 +1756,17 @@ def clean_data():
     print("Process #4: Truncating package histories after 'Delivery' status...")
     df_history = truncate_pkg_history(df_history)
     print("Process #4 completed.", end='\n\n')
-    
-    # we want to align df_package and df_history to have the same packages in them
-    print("Process #5: Aligning the package and history dataframes...")
-    df_package, df_history = package_align_history(df_package, df_history)
-    print("Process #5 completed.", end='\n\n')
-    
+
     # modify history 'type' attribute to show status
     # df_history = type_to_status(df_history)
     
     # convert the codes in the history dataframe
-    print("Process #7: Recoding the main codes...")
+    print("Process #6: Recoding the main codes...")
     df_history = recode_history(df_history)
-    print("Process #7 completed.", end='\n\n') 
+    print("Process #6 completed.", end='\n\n') 
+    
+    # recode the reason codes
+    # df_history = recode_sub_history(df_history)
     
     # fix the loaded_area attribute in history dataframe
     print("Process #8: Fixing loaded_area digits in history dataframe...")
@@ -1671,7 +1774,17 @@ def clean_data():
     print("Process #8 completed.", end='\n\n') 
     
     # remove and resolve non-delivery area zipcodes
-    # resolve_zipcodes(df_history)
+    print("Process #9: Fixing zipcodes and Providers...")
+    fix_zipcode_provider(df_history)
+    print("Process #9 completed.", end='\n\n') 
+    
+    # add 'No Delivery' label to history
+    # df_history = add_class_label(df_history)
+    
+    # we want to align df_package and df_history to have the same packages in them
+    print("Process #10: Aligning the package and history dataframes...")
+    df_package, df_history = package_align_history(df_package, df_history)
+    print("Process #10 completed.", end='\n\n')
     
     print(df_package)
     print(df_history)
