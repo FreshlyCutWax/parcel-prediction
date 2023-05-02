@@ -1912,6 +1912,9 @@ def fix_zipcode_provider(df_history):
         if 'None' in df_pkg['provider'].values:
             indices = df_pkg.index
             df = df.drop(indices, axis=0)
+            
+    # reset the index
+    df = df.reset_index(drop=True)
     
     return df 
     
@@ -1971,42 +1974,42 @@ def clean_data():
     print("Original df_history length:", len(df_history))
     print("\n\n")
     
+    # remove and resolve non-delivery area zipcodes
+    print("Process #1: Fixing zipcodes and Providers...")
+    df_history = fix_zipcode_provider(df_history)
+    print("Process #1 completed.", end='\n\n') 
+    
     # remove packages that don't have a history
-    print("Process #1: Removing packages with unusable histories...")
+    print("Process #2: Removing packages with unusable histories...")
     df_history = remove_empty_pkg(df_history)
-    print("Process #1 completed.", end='\n\n')
+    print("Process #2 completed.", end='\n\n')
     
     # enforce date range of all packages to be within the start and end date range
-    print("Process #2: Enforcing date range for the history dataframe...")
+    print("Process #3: Enforcing date range for the history dataframe...")
     df_history = remove_history_dates(df_history)
-    print("Process #2 completed.", end='\n\n')
+    print("Process #3 completed.", end='\n\n')
     
     # remove packages that have incorrect history ordering (missing 0th index)
     # some packages had weird 'Delivery' at first index, with date 9999/99/99
     # those packages are now missing the first index, we need to remove them
-    print("Process #3: Removing packages with ordering issues...")
+    print("Process #4: Removing packages with ordering issues...")
     df_history = remove_history_order(df_history)
-    print("Process #3 completed.", end='\n\n')
+    print("Process #4 completed.", end='\n\n')
     
     # truncate package histories to not show history after 'Delivery' status
-    print("Process #4: Truncating package histories after 'Delivery' status...")
+    print("Process #5: Truncating package histories after 'Delivery' status...")
     df_history = truncate_pkg_history(df_history)
-    print("Process #4 completed.", end='\n\n')    
+    print("Process #5 completed.", end='\n\n')    
     
     # convert the codes in the history dataframe
-    print("Process #5: Recoding the codes...")
+    print("Process #6: Recoding the codes...")
     df_history = recode_history(df_history)
-    print("Process #5 completed.", end='\n\n')     
+    print("Process #6 completed.", end='\n\n')     
     
     # fix the loaded_area attribute in history dataframe
-    print("Process #6: Fixing loaded_area digits in history dataframe...")
+    print("Process #7: Fixing loaded_area digits in history dataframe...")
     df_history = fix_area_digits(df_history)
-    print("Process #6 completed.", end='\n\n') 
-    
-    # remove and resolve non-delivery area zipcodes
-    print("Process #7: Fixing zipcodes and Providers...")
-    fix_zipcode_provider(df_history)
-    print("Process #7 completed.", end='\n\n') 
+    print("Process #7 completed.", end='\n\n')    
     
     # modify history 'type' attribute to show status
     print("Process #8: Transforming 'type' attribute and adding no delivery status...")
@@ -2018,12 +2021,20 @@ def clean_data():
     df_package, df_history = package_align_history(df_package, df_history)
     print("Process #9 completed.", end='\n\n')
     
-    print(df_package)
-    print(df_history)
+    # set and save dataframe
+    set_dataframe(df_package, 'package')
+    set_dataframe(df_history, 'merged')
+    save_success = store_dataframes()
     
+    print("----------------------------------")
+    print("---------CLEAN SUCCESS------------")
+    print("----------------------------------")
+    print("Cleaning completed.")
+    print("\n\n")            
+    print("Dataframe saved successfully:", save_success)
     print("New df_package length:", len(df_package))
     print("New df_history length:", len(df_history))
-    
+    print("\n\n")
     input("Press enter to continue...")
 # -------------------------------------------------------------------------------------------------------->
 # ---------------------------------------------- END CLEAN DATA ------------------------------------------>
