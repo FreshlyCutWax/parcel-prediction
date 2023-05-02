@@ -1677,11 +1677,12 @@ def fix_zipcode_provider(df_history):
     df = df_history.copy()
     
     # original zip code dictionary
-    zip_dict = {'H': [65604, 65605, 65612, 65613, 65617, 65635, 65645, 65646, 65661, \
-                      65663, 65664, 65674, 65682, 65707, 65710, 65712, 65721, 65725, \
-                      65727, 65752, 65769, 65770, 65767, 65803, 65804], \
+    zip_dict = { \
+        'H': [65604, 65605, 65612, 65613, 65617, 65635, 65645, 65646, 65661, \
+              65663, 65664, 65674, 65682, 65707, 65710, 65712, 65721, 65725, \
+              65727, 65752, 65769, 65770, 65767, 65803, 65804], \
         'B': [65590, 65622, 65632, 65644, 65648, 65685, 65706, 65713, 65722, \
-            65757, 65764, 65783, 65786, 65787, 65667, 65662, 65767], \
+              65757, 65764, 65783, 65786, 65787, 65667, 65662, 65767], \
         'C': [65608, 65614, 65618, 65620, 65627, 65629, 65637, 65638, 65653, \
               65655, 65657, 65666, 65676, 65679, 65680, 65701, 65715, 65720, \
               65729, 65731, 65733, 65741, 65744, 65753, 65755, 65759, 65760, \
@@ -1693,29 +1694,170 @@ def fix_zipcode_provider(df_history):
         'K': [65609, 65626, 65660, 65689, 65766, 65775, 65776, 65777, 65788, \
               65789, 65790, 65793], \
         'D': [64738, 64776, 65324, 65326, 65355, 65601, 65603, 65634, 65640, \
-            65649, 65650, 65668, 65724, 65732, 65735, 65774, 65779, 65785, \
-            64781, 65607], \
+              65649, 65650, 65668, 65724, 65732, 65735, 65774, 65779, 65785, \
+              64781, 65607], \
         'G': [65742, 65765, 65809, 65802, 65807, 65804], \
         'J': [65714, 65801, 65806, 65808, 65810, 65897, 65898, 65899, 65619, \
             65802, 65803, 65804, 65807], \
         'E': [65636, 65652, 65702, 65704, 65711, 65717, 65746]}
-        
-    # transform the the zip code dictionary into something useful
+    
+    #<---------------------------BUILD DICTIONARIES---------------------------->
+    # the base zip code list
+    zip_list = []
+    
+    # build the zip list
+    for p, z in zip_dict.items():
+        for zz in z:
+            zip_list.append(zz)
+    
+    # dictionary <zip code : area >
+    zip_area_dict = {}
+    
+    # dictionary <zip code : area >
+    area_provider_dict = {}
+    
+    # build the zip_area_dict and area_provider_dict
+    # based on the zipcodes and areas inside the data
+    for row in df_history.itertuples():
+        if row.zipcode in zip_list:
+            
+            if row.assigned_area != 999 and row.assigned_area != 0:
+                zip_area_dict[row.zipcode] = row.assigned_area
+            
+            if row.loaded_area != 0:
+                zip_area_dict[row.zipcode] = row.loaded_area 
+                
+        if row.assigned_area and row.provider:
+            if row.assigned_area != 999:
+                area_provider_dict[row.assigned_area] = row.provider
+                
+    # dictionary < area : zip code >
+    area_zip_dict = dict([(value, key) for key, value in zip_area_dict.items()])
+    
+    # dictionary < zip code : provider >
     zip_provider_dict = {}
     for p, z in zip_dict.items():
         for zz in z:
-            if zz not in zip_provider_dict:
-                zip_provider_dict[zz] = p
+            zip_provider_dict[zz] = p
+        
+    # dictionary < provider : zip code >
+    provider_zip_dict = {}    
+    pbar = tqdm(zip_dict.items())
+    for p, z in pbar:
+        best_frequency = 0
+        best_zipcode = 0
+        
+        for zz in z:
+            pbar.set_description(str(zz))
+            frequency = 0
+            
+            for row in df_history.itertuples():
+                if row.zipcode == zz:
+                    frequency += 1
+                    
+            if frequency > best_frequency:
+                best_frequency = frequency
+                best_zipcode = zz
+                
+        provider_zip_dict[p] = best_zipcode
+    #<---------------------------DICTIONARIES COMPLETE------------------------->    
     
-    # list of all the zipcodes from history
-    zip_list = []
     
-    # dictionary to hold area assignments to providers
-    zip_area_dict = {}
+    #<---------------------------FIX ZIPCODES/PROVIDERS------------------------>
+    # iterate over all the rows in history dataframe
+    for row in df_history.itertuples():
+        # if the zipcode is not in the area
+        if row.zipcode and row.zipcode not in zip_list:
+            # if we have an assigned area and it's in our dictionary
+            if row.assigned_area and row.assigned_area in area_zip_dict:
+                # get estimated zipcode
+                zipcode = area_zip_dict[row.assigned_area]
+                
+                # set zipcode for the right index
+                df.at[row.Index, 'zipcode'] = zipcode
+                
+            # if we have a loaded area and it's in our dictionary    
+            elif row.loaded_area and row.loaded_area in area_zip_dict:
+                # get estimated zipcode
+                zipcode = area_zip_dict[row.loaded_area]
+                
+                # set zipcode for the right index
+                index = row.Index
+                df.at[row.Index, 'zipcode'] = zipcode
+            
+            # if all else fails, use the provider
+            elif row.provider != 'None':
+                # set zipcode most frequent for provider
+                zipcode = provider_zip_dict[row.provider]
+                
+                # set zipcode for the right index
+                index = row.Index
+                df.at[row.Index, 'zipcode'] = zipcode
+        
+        # if we are missing the zipcode
+        if not row.zipcode and row.provider != '':
+            # if we have an assigned area and it's in our dictionary
+            if row.assigned_area and row.assigned_area in area_zip_dict:
+                # get estimated zipcode
+                zipcode = area_zip_dict[row.assigned_area]
+                
+                # set zipcode for the right index
+                df.at[row.Index, 'zipcode'] = zipcode
+                
+            # if we have a loaded area and it's in our dictionary    
+            elif row.loaded_area and row.loaded_area in area_zip_dict:
+                # get estimated zipcode
+                zipcode = area_zip_dict[row.loaded_area]
+                
+                # set zipcode for the right index
+                index = row.Index
+                df.at[row.Index, 'zipcode'] = zipcode
+            
+            # if all else fails, use the provider
+            elif row.provider != 'None':
+                # set zipcode most frequent for provider
+                zipcode = provider_zip_dict[row.provider]
+                
+                # set zipcode for the right index
+                index = row.Index
+                df.at[row.Index, 'zipcode'] = zipcode
+        
+        # if we are missing the provider
+        if row.provider == 'None':
+            
+            if row.assigned_area and row.assigned_area in area_provider_dict:
+                # get estimated provider
+                provider = area_provider_dict[row.assigned_area]
+                
+                # set provider for the right index
+                df.at[row.Index, 'provider'] = provider
+                
+            elif row.loaded_area and row.loaded_area in area_provider_dict:
+                # get estimated provider
+                provider = area_provider_dict[row.loaded_area]
+                
+                # set provider for the right index
+                df.at[row.Index, 'provider'] = provider
+                
+            elif row.zipcode:
+                # get estimated provider
+                provider = zip_provider_dict[row.zipcode]
+                
+                # set provider for the right index
+                df.at[row.Index, 'provider'] = provider
+        
+        # if we are missing the assigned area
+        if not row.assigned_area and row.provider != '':
+            
+            if row.zipcode and row.zipcode in zip_area_dict:
+                # get estimated area
+                area = zip_area_dict[row.zipcode]
+                
+                # set area for the right index
+                df.at[row.Index, 'assigned_area'] = area
+    #<----------------------ZIPCODES/PROVIDERS COMPLETE------------------------>
     
-    
-    
-    pass
+    return df
 # -------------------------------------------------------------------------------------------------------->
 # -------------------------------------- END CLEANING FUNCTIONS ------------------------------------------>
 # -------------------------------------------------------------------------------------------------------->
