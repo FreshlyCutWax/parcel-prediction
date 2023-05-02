@@ -38,7 +38,7 @@ SCRIPT_PATH = "logs/"               # path for error logs and such
 FILES = []                          # File list
 START = datetime.date(2000, 1, 1)   # Start date in date range
 END = datetime.date(2000, 1, 1)     # End date in date range
-DATAFRAMES = [[], [], [], []]       # dataframes [df_aggregate, df_package, df_history]
+DATAFRAMES = [[], [], [], [], []]   # dataframes [df_aggregate, df_package, df_history]
 ERROR_LOGS = [[], [], []]           # Error logs [build_errors, merge_errors, clean_errors]
 
 # ignore warnings
@@ -125,11 +125,21 @@ def load_dataframes():
     else:
         success = False
         
+    # get merged dataframe
+    path = os.path.join(output_path, 'df_merged_history.pkl')
+    if os.path.isfile(path):
+        df = pd.read_pickle(path)
+        set_dataframe(df, 'merged')
+    else:
+        success = False
+        
     # set empty if no success in getting dataframes
     if success == False:
         set_dataframe([], 'aggregate')
         set_dataframe([], 'package')
         set_dataframe([], 'history')
+        set_dataframe([], 'pld')
+        set_dataframe([], 'merged')
         
     return success
     
@@ -143,28 +153,51 @@ def store_dataframes():
     # if save is successful or not
     success = False
     
-    # save aggregate
+    
     if os.path.exists(output_path):
-        path = os.path.join(output_path, 'df_aggregate.pkl')
-        df = get_dataframe('aggregate')
-        df.to_pickle(path)
-        
+        # save aggregate
+        try:
+            path = os.path.join(output_path, 'df_aggregate.pkl')
+            df = get_dataframe('aggregate')
+            df.to_pickle(path)            
+            success = True
+        except:
+            success = False
+         
         # save package
-        path = os.path.join(output_path, 'df_package.pkl')
-        df = get_dataframe('package')
-        df.to_pickle(path)
+        try:    
+            path = os.path.join(output_path, 'df_package.pkl')
+            df = get_dataframe('package')
+            df.to_pickle(path)
+            success = True
+        except:
+            success = False
         
         # save history
-        path = os.path.join(output_path, 'df_history.pkl')
-        df = get_dataframe('history')
-        df.to_pickle(path)
+        try:
+            path = os.path.join(output_path, 'df_history.pkl')
+            df = get_dataframe('history')
+            df.to_pickle(path)
+            success = True
+        except:
+            success = False
         
         # save pld
-        path = os.path.join(output_path, 'df_pld.pkl')
-        df = get_dataframe('pld')
-        df.to_pickle(path)
+        try:
+            path = os.path.join(output_path, 'df_pld.pkl')
+            df = get_dataframe('pld')
+            df.to_pickle(path)
+            success = True
+        except:
+            success = False
         
-        success = True
+        # save merged history
+        try:
+            path = os.path.join(output_path, 'df_merged_history.pkl')
+            df = get_dataframe('merged')
+            df.to_pickle(path)
+        except:
+            print('')
         
     return success
     
@@ -378,6 +411,8 @@ def display_dataframes():
     df_aggregate = get_dataframe('aggregate')
     df_package = get_dataframe('package')
     df_history = get_dataframe('history')
+    df_pld = get_dataframe('pld')
+    df_merged = get_dataframe('merged')
     
     # display dataframes if there are any built
     if len(df_aggregate) != 0 or len(df_package) != 0 or len(df_history) != 0:
@@ -385,6 +420,8 @@ def display_dataframes():
         print("Dataframe Aggregate:\n", df_aggregate, end='\n\n')
         print("Dataframe Package:\n", df_package, end='\n\n')
         print("Dataframe History:\n", df_history, end='\n\n')
+        print("Dataframe PLD:\n", df_pld, end='\n\n')
+        print("Dataframe History:\n", df_merged, end='\n\n')
     else:
         print("No dataframes to display.", end='\n\n')
 
@@ -662,6 +699,8 @@ def set_dataframe(df, df_type):
         DATAFRAMES[2] = df
     elif df_type == 'pld':
         DATAFRAMES[3] = df
+    elif df_type == 'merged':
+        DATAFRAMES[4] = df
     else:
         print("", end="")
     
@@ -692,6 +731,8 @@ def get_dataframe(df_type):
         df = DATAFRAMES[2].copy()
     elif df_type == 'pld':
         df = DATAFRAMES[3].copy()
+    elif df_type == 'merged':
+        df = DATAFRAMES[4].copy()
     else:
         df = None
         
@@ -1423,40 +1464,25 @@ def history_merge_pld():
     merged_dataframe['loaded_area'] = merged_dataframe['loaded_area'].astype('int')
     # ------------------------- END CLEANUP AND TYPE CASTING -------------------------------->
     
+    # set and save dataframe
+    set_dataframe(merged_dataframe, 'merged')
+    save_success = store_dataframes()
+    
+    #set and save error logs
+    set_error_log(merge_error_log, 'merge')
+    save_log_success = store_error_logs()
     
     print("----------------------------------")
     print("---------MERGE SUCCESS------------")
     print("----------------------------------")
     print("Merging completed.")
     print("Merge errors:", errors)
+    print("\n\n")            
+    print("Dataframe saved successfully:", save_success)
+    print("Error log saved successfully:", save_log_success)
     print("\n\n")
-    
-    # save merged dataframe prompt
-    while True:
-        print("Saving the merged dataframe will overwrite df_history.")
-        option = input("Would you like to save? [Y/N] >: ")
-        print("\n\n")
-        
-        if option.upper() == 'Y':
-            # set and save dataframe
-            set_dataframe(merged_dataframe, 'history')
-            save_success = store_dataframes()
-            
-            #set and save error logs
-            set_error_log(merge_error_log, 'merge')
-            save_log_success = store_error_logs()
-            
-            print("Dataframe saved successfully:", save_success)
-            print("Error log saved successfully:", save_log_success)
-            input("Press enter to continue...")
-            break
-        elif option.upper() == 'N':
-            print("Merged dataframe not saved.")
-            input("Press enter to continue...")
-            break
-        else:
-            print("Not a valid option.")
-            print("\n\n")    
+    input("Press enter to continue...")
+   
 # -------------------------------------------------------------------------------------------------------->
 # ---------------------------------------------- END MERGE DATA ------------------------------------------>
 # -------------------------------------------------------------------------------------------------------->
@@ -1470,6 +1496,23 @@ def history_merge_pld():
 def recode_history(df_history):
     # make a copy of the history dataframe
     df = df_history.copy()
+    
+    # Sub recodes List
+    sub_recode_dict = {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 73, 7: 74}
+    
+    # Use default_dict so that codes other than recodes default to 0
+    default_sub_dict = defaultdict(lambda: 0)
+    for k, v in sub_recode_dict.items():
+        default_sub_dict[v] = k
+        
+    # do the sub recoding
+    for row in df_history.itertuples():
+        if row.driver_code == 2:
+            new_code = default_sub_dict[row.reason]
+            df.at[row.Index, 'reason'] = new_code
+        else:
+            df.at[row.Index, 'reason'] = 0
+
 
     # Recodes List
     recode_dict = {1: {1, 4, 7, 11, 36, 57, 59, 82, 83}, 2: {15, 34, 47, 94, 100}, 3: {40, 300},
@@ -1857,7 +1900,7 @@ def fix_zipcode_provider(df_history):
                 df.at[row.Index, 'assigned_area'] = area
     #<----------------------ZIPCODES/PROVIDERS COMPLETE------------------------>
     
-    return df
+    return df 
 # -------------------------------------------------------------------------------------------------------->
 # -------------------------------------- END CLEANING FUNCTIONS ------------------------------------------>
 # -------------------------------------------------------------------------------------------------------->
@@ -1871,7 +1914,9 @@ def fix_zipcode_provider(df_history):
 def clean_data():
     # get copies of the current built dataframes
     df_package = get_dataframe('package')
-    df_history = get_dataframe('history')
+    df_history = get_dataframe('merged')
+    
+    print(df_history)
     
     print("Original df_package length:", len(df_package))
     print("Original df_history length:", len(df_history))
@@ -1903,22 +1948,19 @@ def clean_data():
     # df_history = type_to_status(df_history)
     
     # convert the codes in the history dataframe
-    print("Process #6: Recoding the main codes...")
+    print("Process #6: Recoding the codes...")
     df_history = recode_history(df_history)
-    print("Process #6 completed.", end='\n\n') 
-    
-    # recode the reason codes
-    # df_history = recode_sub_history(df_history)
+    print("Process #6 completed.", end='\n\n')     
     
     # fix the loaded_area attribute in history dataframe
-    print("Process #8: Fixing loaded_area digits in history dataframe...")
+    print("Process #7: Fixing loaded_area digits in history dataframe...")
     df_history = fix_area_digits(df_history)
-    print("Process #8 completed.", end='\n\n') 
+    print("Process #7 completed.", end='\n\n') 
     
     # remove and resolve non-delivery area zipcodes
-    print("Process #9: Fixing zipcodes and Providers...")
+    print("Process #8: Fixing zipcodes and Providers...")
     fix_zipcode_provider(df_history)
-    print("Process #9 completed.", end='\n\n') 
+    print("Process #8 completed.", end='\n\n') 
     
     # add 'No Delivery' label to history
     # df_history = add_class_label(df_history)
