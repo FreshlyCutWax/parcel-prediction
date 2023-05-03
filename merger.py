@@ -12,6 +12,13 @@ import numpy as np
 
 
 
+
+
+
+
+
+
+
 def main():
     # check if path for weather data exists
     path = 'compiled/'
@@ -39,10 +46,15 @@ def main():
         print("Place pickled dataframes in \'compiled\'.")
         input("Press enter to continue...")
         sys.exit()
-        
-    print(df_aggregate)
-    print(df_history)
-    print(df_package)
+    
+
+    #-----------------------MERGING BEGINS HERE------------------------>
+    print("The master dataframe will begin to be built.")
+    print("This will take a while. Sit back and grab a drink.")
+    print("\n\n")
+    input("<Press enter to begin>")
+    # initialize the dataframe
+    df_master = df_package.copy()
 
 
 if __name__ == "__main__":
