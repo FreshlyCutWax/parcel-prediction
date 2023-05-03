@@ -1402,13 +1402,13 @@ def history_merge_pld():
     pkg_error = False
     
     pbar = tqdm(history_idx)
-    pbar.set_description('Errors: 0')
+    pbar.set_description('Errors 0')
     # loop over all the individual packages in history
     for i in pbar:
         # collect and reset error
         if pkg_error == True:           
             pkg_error = False
-            pbar_error = 'Errors: ' + str(errors)
+            pbar_error = 'Errors ' + str(errors)
             pbar.set_description(pbar_error)
     
         # get the package's history
@@ -1636,11 +1636,11 @@ def remove_history_order(df_history):
     # get the unique package IDs
     history_idx = pd.unique(df_history['package_id'])
     
+    # if the package 'order' index 0 is not present, remove package
     for i in tqdm(history_idx):
         # df of the current package's history
         df_pkg = df_history[df_history['package_id'] == i]
-        
-        # if the package 'order' index 0 is not present, remove package
+               
         if 0 not in df_pkg['order'].values:
             indices = df_pkg.index
             df = df.drop(indices, axis=0)
@@ -1808,9 +1808,7 @@ def fix_zipcode_provider(df_history):
     
     #<---------------------------FIX ZIPCODES/PROVIDERS------------------------>
     # iterate over all the rows in history dataframe
-    pbar = tqdm(df_history.itertuples())
-    pbar.set_description("Fixing")
-    for row in pbar:
+    for row in df_history.itertuples():
         # if the zipcode is not in the area
         if row.zipcode and row.zipcode not in zip_list:
             # if we have an assigned area and it's in our dictionary
@@ -1906,10 +1904,26 @@ def fix_zipcode_provider(df_history):
     df_idx = pd.unique(df_history['package_id'])
 
     # remove packages with their provider as 'None'
-    for i in tqdm(df_idx):
+    pbar = tqdm(df_idx)
+    pbar.set_description("Removing 'None' Provider")
+    for i in pbar:
         df_pkg = df[df['package_id'] == i]
         
         if 'None' in df_pkg['provider'].values:
+            indices = df_pkg.index
+            df = df.drop(indices, axis=0)
+            
+            
+    # remove packages with no zipcodes
+    pbar = tqdm(df_idx)
+    pbar.set_description("Removing No Zipcode")
+    for i in pbar:
+        df_pkg = df[df['package_id'] == i]
+        
+        zips = pd.unique(df_pkg['zipcode'])
+        zips = [x for x in zips if x != 0]
+        
+        if len(zips) == 0:
             indices = df_pkg.index
             df = df.drop(indices, axis=0)
             
