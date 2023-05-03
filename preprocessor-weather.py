@@ -21,10 +21,10 @@ def main():
     # check if the data file exists in the directory
     path = path + 'Weather.csv'
     if not os.path.exists(path):
-            print("No data found.")
-            print("Place weather data in \'weather_data\'.")
-            input("Press enter to continue...")
-            sys.exit()
+        print("No data found.")
+        print("Place weather data in \'weather_data\'.")
+        input("Press enter to continue...")
+        sys.exit()
     
     # read the data
     data = pd.read_csv(path)
