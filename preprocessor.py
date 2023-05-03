@@ -834,11 +834,22 @@ def make_aggregate_dataframe(xlsx_file, date):
     df.insert(loc=0, column='Date', value=array_date)
     
     # rename columns
-    df = df.rename(columns={"Date" : "date", "Areas" : "area_counts", "Counts" : "pkg_counts", \
-                            "Code 85" : "pkg_missing", "All Codes" : "pkg_returns"})
+    df = df.rename(columns={"Date" : "date", \
+                            "Provider" : "provider", \
+                            "Areas" : "area_counts", \
+                            "Counts" : "pkg_counts", \
+                            "Code 85" : "pkg_missing", \
+                            "All Codes" : "pkg_returns"})
                             
     # retain order and approriate columns
-    df = df[['date', 'area_counts', 'pkg_counts', 'pkg_returns', 'pkg_missing']]
+    df = df[['date', 'provider', 'area_counts', 'pkg_counts', 'pkg_returns', 'pkg_missing']]
+    
+    # cast types
+    df['date'] = df['date'].astype('string')
+    df['provider'] = df['provider'].astype('string')
+    df['area_counts'] = df['area_counts'].astype('int')
+    df['pkg_counts'] = df['pkg_counts'].astype('int')
+    df['pkg_returns'] = df['pkg_returns'].astype('int')
     
     # reset the index values from 0 to n-1
     df = df.reset_index(drop=True)

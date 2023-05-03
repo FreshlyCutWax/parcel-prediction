@@ -105,6 +105,29 @@ def compress_history(df_history):
     return df
 
 
+
+def add_package(df_master, df_package):
+    # make a copy of the master dataframe
+    df = df_master.copy()
+    
+    # empty arrays to be added as columns
+    service_array = np.full((len(df)), '', dtype='str')
+    sig_array = np.full((len(df)), '', dtype='str')
+    
+    # insert the columns in the new master dataframe
+    df.insert(loc=len(df.columns), column='service', value=service_array)
+    df.insert(loc=len(df.columns), column='signature', value=sig_array)
+    
+    for i in tqdm(df_master.itertuples()):
+        df.at[i.Index, 'service'] = df_package[df_package['package_id'] == i.package_id].service.values[0]
+        df.at[i.Index, 'signature'] = df_package[df_package['package_id'] == i.package_id].signature.values[0]
+        
+        
+    return df
+
+
+
+
 def main():
     # check if path for weather data exists
     path = 'compiled/'
@@ -146,7 +169,8 @@ def main():
     df_master = compress_history(df_history)
     
     # add package information
-    # df_master = add_package(df_master, df_package)
+    print("Adding package information...")
+    df_master = add_package(df_master, df_package)
     
     print(df_master)
 
