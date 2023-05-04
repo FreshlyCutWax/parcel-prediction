@@ -253,15 +253,23 @@ def main():
     print("\n\n")
     
     # initialize master dataframe
+    print("Adding package history data...")
     df_master = df_history.copy()
+    print("Done.", end='\n\n')
     
     # add aggregate data
+    print("Adding aggregate data...")
     df_master = add_aggregate(df_master, df_aggregate)
+    print("Done.", end='\n\n')
     
     # add weather data
+    print("Adding weather data...")
     df_master = add_weather(df_master, df_weather)
+    print("Done.", end='\n\n')
     
     print(df_master)
+
+
 
 
 if __name__ == "__main__":
