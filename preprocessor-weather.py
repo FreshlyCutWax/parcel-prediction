@@ -52,7 +52,8 @@ def main():
     data = data.drop(columns=['WT02'])
     
     # rename the columns
-    data = data.rename(columns={'DATE':'date', 'PRCP':'precip', 'TMAX':'temp', 'WT01':'fog'})
+    data = data.rename(columns={'DATE':'date', 'PRCP':'precip', \
+                                'SNOW':'snow', 'TMAX':'temp', 'WT01':'fog'})
     
     # create output directory if needed
     output_path = 'compiled/'
@@ -60,7 +61,7 @@ def main():
         os.makedirs(path)
     
     # save output to pickle file
-    output_path = output_path + 'weather.pkl'
+    output_path = output_path + 'df_weather.pkl'
     data.to_pickle(output_path)
     
     # print the dataframe

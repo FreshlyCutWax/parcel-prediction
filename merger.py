@@ -12,9 +12,9 @@ from tqdm import tqdm
 
 
 
-def compress_history(df_history):
+def compress(df_master):
     # create an array of all our unique package IDs
-    history_idx = pd.unique(df_history['package_id'])
+    history_idx = pd.unique(df_master['package_id'])
     
     # create a list to hold compressed dataframe information
     history_list = []
@@ -27,7 +27,7 @@ def compress_history(df_history):
         pkg_hist = []
         
         # get a dataframe of the an individual package history
-        df_pkg = df_history[df_history['package_id'] == i]
+        df_pkg = df_master[df_master['package_id'] == i]
         
         # append the package ID
         pkg_hist.append(df_pkg['package_id'].iloc[0])
@@ -73,7 +73,7 @@ def compress_history(df_history):
         days = [0, 0, 0, 0, 0, 0]
         for d in dates:
             index = df_pkg[df_pkg['date'] == d].index
-            dow = df_history['dow'].iloc[index[0]]
+            dow = df_master['dow'].iloc[index[0]]
             days[day_dict[dow]] += 1
         for i in days:
             pkg_hist.append(i)
@@ -107,6 +107,7 @@ def compress_history(df_history):
 
 
 def add_package(df_master, df_package):
+    # THIS FUNCTION ONLY WORKS AFTER COMPRESSION!!!
     # make a copy of the master dataframe
     df = df_master.copy()
     
@@ -123,6 +124,43 @@ def add_package(df_master, df_package):
         df.at[i.Index, 'signature'] = df_package[df_package['package_id'] == i.package_id].signature.values[0]
         
         
+    return df
+    
+    
+    
+    
+def add_aggregate(df_master, df_aggregate):
+    # get a copy of the master dataframe
+    df = df_master.copy()
+    
+    # create arrays for new columns
+    total_count_array = np.full(len(df), 0, dtype='int')
+    
+    # insert blank column into dataframe
+    df.insert(loc=len(df.columns), column='total_day_pkgs', value=total_count_array)
+    
+    # get the unique package IDs from the dataframe
+    history_idx = pd.unique(df['package_id'])
+    
+    # loop over all the packages and total number of day packages
+    for i in tqdm(history_idx):
+        # get the package's history
+        pkg_hist = df[df['package_id'] == i]
+        
+        # get the unique dates
+        dates = pd.unique(pkg_hist['date'])
+        
+        for d in dates:
+            # get the aggregate data for the date
+            df_agg = df_aggregate[df_aggregate['date'] == d]
+            
+            # get the total number of packages
+            total_pkgs = sum(df_agg['pkg_counts'])        
+            
+            # insert the new information into the dataframe
+            pkg_date_index = pkg_hist[pkg_hist['date'] == d].index        
+            df.at[pkg_date_index[0], 'total_day_pkgs'] = total_pkgs
+            
     return df
 
 
@@ -164,13 +202,11 @@ def main():
     input("<Press enter to begin>")
     print("\n\n")
     
-    # compress the history dataframe
-    print("Compressing History...")
-    df_master = compress_history(df_history)
+    # initialize master dataframe
+    df_master = df_history.copy()
     
-    # add package information
-    print("Adding package information...")
-    df_master = add_package(df_master, df_package)
+    # add aggregate data
+    df_master = add_aggregate(df_master, df_aggregate)
     
     print(df_master)
 
