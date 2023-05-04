@@ -421,7 +421,7 @@ def display_dataframes():
         print("Dataframe Package:\n", df_package, end='\n\n')
         print("Dataframe History:\n", df_history, end='\n\n')
         print("Dataframe PLD:\n", df_pld, end='\n\n')
-        print("Dataframe History:\n", df_merged, end='\n\n')
+        print("Dataframe Merged History:\n", df_merged, end='\n\n')
     else:
         print("No dataframes to display.", end='\n\n')
 
