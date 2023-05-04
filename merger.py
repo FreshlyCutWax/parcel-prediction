@@ -16,52 +16,59 @@ warnings.filterwarnings('ignore')
 
 
 def compress(df_master):
+    # make a copy of the master dataframe
+    df = df_master.copy()
+    
     # create an array of all our unique package IDs
-    history_idx = pd.unique(df_master['package_id'])
+    master_idx = pd.unique(df_master['package_id'])
     
     # create a list to hold compressed dataframe information
-    history_list = []
+    dataframe_list = []
     
     # days of week dictionary
     day_dict = {'M':0, 'T':1, 'W':2, 'R':3, 'F':4, 'S':5}
     
-    for i in tqdm(history_idx):
-        # initialize a list to hold compressed package history
-        pkg_hist = []
+    for i in tqdm(master_idx):
+        # initialize a list to hold compressed package
+        pkg = []
         
-        # get a dataframe of the an individual package history
+        # get a dataframe of the an individual package
         df_pkg = df_master[df_master['package_id'] == i]
         
-        # append the package ID
-        pkg_hist.append(df_pkg['package_id'].iloc[0])
+        # add the package ID
+        pkg.append(df_pkg['package_id'].iloc[0])
         
-        # get the class label
-        pkg_hist.append(df_pkg['status'].iloc[len(df_pkg)-1])
+        # add the class label
+        class_label = df_pkg['status'].iloc[len(df_pkg)-1]
+        if class_label == 'D':
+            pkg.append(True)
+        else:
+            pkg.append(False)
         
-        # get the days at the station
+        # add the days at the station
         dates = pd.unique(df_pkg['date'])
-        pkg_hist.append(len(dates))
+        pkg.append(len(dates))
         
-        # append how many entires the package has
-        pkg_hist.append(max(df_pkg['order'].values)+1)
+        # add how many actions were done to the package
+        pkg.append(max(df_pkg['order'].values)+1)
         
-        # get the zipcode
+        # add the zipcode
         zips = pd.unique(df_pkg['zipcode'])
         zips = [x for x in zips if x != 0]
         try:
             zipcode = zips[len(zips)-1]
         except:
             zipcode = 0
-        pkg_hist.append(zipcode)
+        pkg.append(zipcode)
         
-        # get the provider
+        # add the provider
         provider = pd.unique(df_pkg['provider'])
         provider = [x for x in provider if x !='']
         try:
             p = provider[len(provider)-1]
         except:
             p = 'None'
-        pkg_hist.append(p)
+        pkg.append(p)
         
         # add the area
         area = pd.unique(df_pkg['assigned_area'])
@@ -70,41 +77,98 @@ def compress(df_master):
             a = area[len(area)-1]
         except:
             a = 0
-        pkg_hist.append(a)
-        
-        # add days of week frequency
-        days = [0, 0, 0, 0, 0, 0]
-        for d in dates:
-            index = df_pkg[df_pkg['date'] == d].index
-            dow = df_master['dow'].iloc[index[0]]
-            days[day_dict[dow]] += 1
-        for i in days:
-            pkg_hist.append(i)
+        pkg.append(a)
             
-        # add code frequency
+        # get the code frequencies
         s_codes = df_pkg['station_code'].value_counts()
         if 0 in s_codes:
             s_codes = s_codes.drop(0)
         codes = [0, 0, 0, 0, 0, 0, 0, 0, 0]
         for c in s_codes.index:
             codes[c-1] = s_codes[c]
-        for i in codes:
-            pkg_hist.append(i)
+            
+        # add package delays
+        pkg.append(codes[0])
+        
+        # add number of delivery failures
+        pkg.append(codes[4])
+        
+        # SKIP WAITING PACKAGE CODES
+        # SKIP PROCESSING PACKAGE CODES
+        
+        # add if the package had an incorrect address
+        if codes[5] > 0:
+            pkg.append(True)
+        else:
+            pkg.append(False)
+            
+        # add if the package was ever missing
+        if codes[6] > 0:
+            pkg.append(True)
+        else:
+            pkg.append(False)
+            
+        # add if the the package was refused
+        if codes[7] > 0:
+            pkg.append(True)
+        else:
+            pkg.append(False)
+            
+        # add if the package ever needed inspection
+        if codes[8] > 0:
+            pkg.append(True)
+        else:
+            pkg.append(False)
+            
+        # add if there were any resolutions to package issues
+        if codes[2] > 0:
+            pkg.append(True)
+        else:
+            pkg.append(False)
         
         # add address issue reason, if any
         reason = pd.unique(df_pkg['reason'])
         if reason.any():
             reason = reason[reason != 0]
-        pkg_hist.append(reason[len(reason)-1])
+        pkg.append(reason[len(reason)-1])
+        
+        # add the average package count per day
+        pkg_counts = pd.unique(df_pkg[df_pkg['total_day_pkgs'] != 0].total_day_pkgs)
+        try:
+            pkg_mean = round(np.mean(pkg_counts))
+        except:
+            pkg_mean = round(np.mean(pd.unique(df.total_day_pkgs)))
+        pkg.append(pkg_mean)
+        
+        # add if there was rain or snow during package's life
+        precip = np.sum(df_pkg.precip)
+        snow = np.sum(df_pkg.snow)
+        if precip > 0 or snow > 0:
+            pkg.append(True)
+        else:
+            pkg.append(False)
+            
+        # add the average temperature during the package's life
+        temp = np.mean(pd.unique(df_pkg[df_pkg['temp'] != 0].temp))
+        pkg.append(temp)
+        
+        # add if there was fog/fog-like weather during package's life
+        fog = np.sum(df_pkg.fog)
+        if fog > 0:
+            pkg.append(True)
+        else:
+            pkg.append(False)
         
         # append to compressed history list
-        history_list.append(pkg_hist)
-
-    df = pd.DataFrame(history_list, columns=['package_id', 'status', 'days_active', 'actions', 'zipcode', \
-                                             'provider', 'area', 'dow_m', 'dow_t', 'dow_w', 'dow_r', 'dow_f', \
-                                             'dow_s', 'code_1', 'code_2', 'code_3', 'code_4', 'code_5', \
-                                             'code_6', 'code_7', 'code_8', 'code_9', 'address_reason'])
-                                             
+        dataframe_list.append(pkg)
+    
+    # convert the 2D list into a dataframe
+    df = pd.DataFrame(dataframe_list, columns=['package_id', 'delivered', 'days_active', 'events', 'zipcode', \
+                                               'provider', 'area',  \
+                                               'delays', 'failures','incorrect_address', 'missing', \
+                                               'refused', 'inspection', 'issue_resolution', 'address_reason', \
+                                               'avg_volume', 'precip', 'avg_temp', 'fog'])
+                                               
     return df
 
 
@@ -270,7 +334,29 @@ def main():
     df_master = add_weather(df_master, df_weather)
     print("Done.", end='\n\n')
     
-    print(df_master)
+    # compress the master dataframe
+    print("Compressing master dataframe...")
+    df_master = compress(df_master)
+    print("Done.", end='\n\n')
+    
+    # check save path
+    if not os.path.exists(path):
+        os.makedirs(path)
+      
+    # save the master dataframe
+    filename = 'df_master'
+    df_master.to_pickle(path + filename + '.pkl')
+    df_master.to_csv(path + filename + '.csv')
+    
+    # print success on completion
+    print("MASTER DATAFRAME:")
+    print(df_master, end='\n\n')
+    
+    print("----------------------------------")
+    print("---------MERGER SUCCESS-----------")
+    print("----------------------------------")
+    print("Dataframe saved as a csv and pickle file in:", path)
+    input("Press enter to end...")
 
 
 
