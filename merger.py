@@ -277,6 +277,30 @@ def add_weather(df_master, df_weather):
             df.at[pkg_date_index[0], 'fog'] = weather['fog'].values[0]
             
     return df
+    
+    
+    
+    
+def finalizer(df_master):
+    # get a copy of the master dataframe
+    df = df_master.copy()
+    
+    # remove packages with no zipcode
+    zero_zipcode = df[df['zipcode'] == 0].index
+    df = df.drop(zero_zipcode)
+    
+    # remove packages with no provider
+    none_provider = df[df['provider'] == 'None'].index
+    df = df.drop(none_provider)
+    
+    # remove packages with no area
+    zero_area = df[df['area'] == 0].index
+    df = df.drop(zero_area)
+    
+    # reset the index
+    df = df.reset_index(drop=True)
+    
+    return df
 
 
 
@@ -337,6 +361,11 @@ def main():
     # compress the master dataframe
     print("Compressing master dataframe...")
     df_master = compress(df_master)
+    print("Done.", end='\n\n')
+    
+    # finalize and last cleaning
+    print("Finalizing master dataframe...")
+    df_master = finalizer(df_master)
     print("Done.", end='\n\n')
     
     # check save path
