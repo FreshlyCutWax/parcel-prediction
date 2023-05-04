@@ -421,7 +421,7 @@ def display_dataframes():
         print("Dataframe Package:\n", df_package, end='\n\n')
         print("Dataframe History:\n", df_history, end='\n\n')
         print("Dataframe PLD:\n", df_pld, end='\n\n')
-        print("Dataframe History:\n", df_merged, end='\n\n')
+        print("Dataframe Merged History:\n", df_merged, end='\n\n')
     else:
         print("No dataframes to display.", end='\n\n')
 
@@ -834,11 +834,22 @@ def make_aggregate_dataframe(xlsx_file, date):
     df.insert(loc=0, column='Date', value=array_date)
     
     # rename columns
-    df = df.rename(columns={"Date" : "date", "Areas" : "area_counts", "Counts" : "pkg_counts", \
-                            "Code 85" : "pkg_missing", "All Codes" : "pkg_returns"})
+    df = df.rename(columns={"Date" : "date", \
+                            "Provider" : "provider", \
+                            "Areas" : "area_counts", \
+                            "Counts" : "pkg_counts", \
+                            "Code 85" : "pkg_missing", \
+                            "All Codes" : "pkg_returns"})
                             
     # retain order and approriate columns
-    df = df[['date', 'area_counts', 'pkg_counts', 'pkg_returns', 'pkg_missing']]
+    df = df[['date', 'provider', 'area_counts', 'pkg_counts', 'pkg_returns', 'pkg_missing']]
+    
+    # cast types
+    df['date'] = df['date'].astype('string')
+    df['provider'] = df['provider'].astype('string')
+    df['area_counts'] = df['area_counts'].astype('int')
+    df['pkg_counts'] = df['pkg_counts'].astype('int')
+    df['pkg_returns'] = df['pkg_returns'].astype('int')
     
     # reset the index values from 0 to n-1
     df = df.reset_index(drop=True)
@@ -1402,13 +1413,13 @@ def history_merge_pld():
     pkg_error = False
     
     pbar = tqdm(history_idx)
-    pbar.set_description('Errors: 0')
+    pbar.set_description('Errors 0')
     # loop over all the individual packages in history
     for i in pbar:
         # collect and reset error
         if pkg_error == True:           
             pkg_error = False
-            pbar_error = 'Errors: ' + str(errors)
+            pbar_error = 'Errors ' + str(errors)
             pbar.set_description(pbar_error)
     
         # get the package's history
@@ -1636,11 +1647,11 @@ def remove_history_order(df_history):
     # get the unique package IDs
     history_idx = pd.unique(df_history['package_id'])
     
+    # if the package 'order' index 0 is not present, remove package
     for i in tqdm(history_idx):
         # df of the current package's history
         df_pkg = df_history[df_history['package_id'] == i]
-        
-        # if the package 'order' index 0 is not present, remove package
+               
         if 0 not in df_pkg['order'].values:
             indices = df_pkg.index
             df = df.drop(indices, axis=0)
@@ -1808,9 +1819,7 @@ def fix_zipcode_provider(df_history):
     
     #<---------------------------FIX ZIPCODES/PROVIDERS------------------------>
     # iterate over all the rows in history dataframe
-    pbar = tqdm(df_history.itertuples())
-    pbar.set_description("Fixing")
-    for row in pbar:
+    for row in df_history.itertuples():
         # if the zipcode is not in the area
         if row.zipcode and row.zipcode not in zip_list:
             # if we have an assigned area and it's in our dictionary
@@ -1906,10 +1915,26 @@ def fix_zipcode_provider(df_history):
     df_idx = pd.unique(df_history['package_id'])
 
     # remove packages with their provider as 'None'
-    for i in tqdm(df_idx):
+    pbar = tqdm(df_idx)
+    pbar.set_description("Removing 'None' Provider")
+    for i in pbar:
         df_pkg = df[df['package_id'] == i]
         
         if 'None' in df_pkg['provider'].values:
+            indices = df_pkg.index
+            df = df.drop(indices, axis=0)
+            
+            
+    # remove packages with no zipcodes
+    pbar = tqdm(df_idx)
+    pbar.set_description("Removing No Zipcode")
+    for i in pbar:
+        df_pkg = df[df['package_id'] == i]
+        
+        zips = pd.unique(df_pkg['zipcode'])
+        zips = [x for x in zips if x != 0]
+        
+        if len(zips) == 0:
             indices = df_pkg.index
             df = df.drop(indices, axis=0)
             
@@ -2042,79 +2067,6 @@ def clean_data():
 
 
 
-
-# -------------------------------------------------------------------------------------------------------->
-# ---------------------------------------- MERGER FUNCTIONS ---------------------------------------------->
-# -------------------------------------------------------------------------------------------------------->
-def compress_history(df_history):
-    # create a new dataframe to hold each df to add to list
-    newDf = df_history.iloc[0:0].copy()
-
-    # initialize variables
-    i = 0
-    dfList = []
-    startid = df_history['Package ID'][0]
-
-    # iterate through the dataframe add each package as a separate entry in the list
-    for x in df_history['Package ID']:
-        if x == startid:
-            row = df_history.loc[i]
-            newDf.loc[len(newDf)] = row
-            i += 1
-        else:
-            # add the df to the list
-            if len(newDf) > 0:
-                dfList.append(newDf)
-
-            # start a newDF for the next package entry
-            newDf = df_history.iloc[0:0].copy()
-            startid = df_history['Package ID'][i]
-            i += 1
-
-    # add the final compressed history to the list
-    if len(newDf) > 0:
-        dfList.append(newDf)
-
-
-    # Obtain list of station codes and driver codes
-    SC_list = []
-    DC_list = []
-
-    for df in dfList:
-        SC_vals = df['Station Code'].tolist()
-        df['Station Code'] = SC_vals
-        SC_list.append(SC_vals)
-        DC_vals = df['Driver Code'].tolist()
-        DC_list.append(DC_vals)
-
-    first_rows = [df.iloc[0] for df in dfList]
-
-    # Concatenate the first rows into a new dataframe
-    compressed_df = pd.concat(first_rows, axis=1).T
-
-
-    compressed_df = compressed_df.drop('Station Code', axis=1)
-    compressed_df['Station Code'] = SC_list
-    compressed_df = compressed_df.drop('Driver Code', axis=1)
-    compressed_df['Driver Code'] = DC_list
-
-    # Eventually return recoded df + somehow compressed
-    return compressed_df
-
-# -------------------------------------------------------------------------------------------------------->
-# -------------------------------------- END MERGER FUNCTIONS -------------------------------------------->
-# -------------------------------------------------------------------------------------------------------->
-
-
-
-# -------------------------------------------------------------------------------------------------------->
-# -------------------------------------- MASTER DATAFRAME MERGER ----------------------------------------->
-# -------------------------------------------------------------------------------------------------------->
-def merger():
-    pass
-# -------------------------------------------------------------------------------------------------------->
-# -------------------------------------- END MASTER MERGER ----------------------------------------------->
-# -------------------------------------------------------------------------------------------------------->
 
 def main(args):    
     # check if custom file path is given
