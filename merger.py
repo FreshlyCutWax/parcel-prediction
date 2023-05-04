@@ -8,8 +8,11 @@ import os
 import sys
 import pandas as pd
 import numpy as np
+import warnings
 from tqdm import tqdm
 
+# ignore warnings
+warnings.filterwarnings('ignore')
 
 
 def compress(df_master):
@@ -207,7 +210,7 @@ def add_weather(df_master, df_weather):
             df.at[pkg_date_index[0], 'precip'] = weather['precip'].values[0]
             df.at[pkg_date_index[0], 'snow'] = weather['snow'].values[0]
             df.at[pkg_date_index[0], 'temp'] = weather['temp'].values[0]
-            df.at[pkg_date_index[0], 'temp'] = weather['temp'].values[0]
+            df.at[pkg_date_index[0], 'fog'] = weather['fog'].values[0]
             
     return df
 
