@@ -140,15 +140,15 @@ def add_aggregate(df_master, df_aggregate):
     df.insert(loc=len(df.columns), column='total_day_pkgs', value=total_count_array)
     
     # get the unique package IDs from the dataframe
-    history_idx = pd.unique(df['package_id'])
+    master_idx = pd.unique(df['package_id'])
     
     # loop over all the packages and total number of day packages
-    for i in tqdm(history_idx):
+    for i in tqdm(master_idx):
         # get the package's history
-        pkg_hist = df[df['package_id'] == i]
+        pkg = df[df['package_id'] == i]
         
         # get the unique dates
-        dates = pd.unique(pkg_hist['date'])
+        dates = pd.unique(pkg['date'])
         
         for d in dates:
             # get the aggregate data for the date
@@ -158,8 +158,56 @@ def add_aggregate(df_master, df_aggregate):
             total_pkgs = sum(df_agg['pkg_counts'])        
             
             # insert the new information into the dataframe
-            pkg_date_index = pkg_hist[pkg_hist['date'] == d].index        
+            pkg_date_index = pkg[pkg['date'] == d].index        
             df.at[pkg_date_index[0], 'total_day_pkgs'] = total_pkgs
+            
+    return df
+    
+    
+    
+
+def add_weather(df_master, df_weather):
+    # get a copy of the master dataframe
+    df = df_master.copy()
+    
+    # make arrays for the new columns
+    precip_array = np.full((len(df)), 0.0, dtype='float')
+    snow_array = np.full((len(df)), 0.0, dtype='float')
+    temp_array = np.full((len(df)), 0, dtype='int')
+    fog_array = np.full((len(df)), 0, dtype='int')
+    
+    # insert the new blank columns
+    df.insert(loc=len(df.columns), column='precip', value=precip_array)
+    df.insert(loc=len(df.columns), column='snow', value=snow_array)
+    df.insert(loc=len(df.columns), column='temp', value=temp_array)
+    df.insert(loc=len(df.columns), column='fog', value=fog_array)
+    
+    # get the unique package IDs
+    master_idx = pd.unique(df['package_id'])
+    
+    # loop over all the packages
+    for i in tqdm(master_idx):
+        # get the package's history
+        pkg = df[df['package_id'] == i]
+        
+        # get the unique dates
+        dates = pd.unique(pkg['date'])
+        
+        for d in dates:
+            # get the weather for date in a series
+            weather = df_weather[df_weather['date'] == d]
+            
+            # sequeeze df row into a series
+            weather.squeeze()
+            
+            # get indices for package's date
+            pkg_date_index = pkg[pkg['date'] == d].index
+            
+            # set the weather values
+            df.at[pkg_date_index[0], 'precip'] = weather['precip'].values[0]
+            df.at[pkg_date_index[0], 'snow'] = weather['snow'].values[0]
+            df.at[pkg_date_index[0], 'temp'] = weather['temp'].values[0]
+            df.at[pkg_date_index[0], 'temp'] = weather['temp'].values[0]
             
     return df
 
@@ -181,12 +229,14 @@ def main():
     file_aggregate = 'df_aggregate.pkl'
     file_merged_history = 'df_merged_history.pkl'
     file_package = 'df_package.pkl'
+    file_weather = 'df_weather.pkl'
     
     # load the data if it exists
     try:
         df_aggregate = pd.read_pickle(path + file_aggregate)
         df_history = pd.read_pickle(path + file_merged_history)
         df_package = pd.read_pickle(path + file_package)
+        df_weather = pd.read_pickle(path + file_weather)
         
     except:
         print("No data found.")
@@ -207,6 +257,9 @@ def main():
     
     # add aggregate data
     df_master = add_aggregate(df_master, df_aggregate)
+    
+    # add weather data
+    df_master = add_weather(df_master, df_weather)
     
     print(df_master)
 
