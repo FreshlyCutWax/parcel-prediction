@@ -390,7 +390,7 @@ def main():
       
     # save the master dataframe
     df_master.to_pickle(path + 'df_master.pkl')
-    df_master.to_csv(path + 'package_data.csv')
+    df_master.to_csv(path + 'package_data.csv', index=False)
     
     # print success on completion
     print("MASTER DATAFRAME:")
