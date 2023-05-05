@@ -49,10 +49,6 @@ def compress(df_master):
         dates = pd.unique(df_pkg['date'])
         pkg.append(len(dates))
         
-        # add how many events happened to the package
-        events = df_pkg[(df_pkg['station_code'] != 0) | (df_pkg['driver_code'] != 0)]
-        pkg.append(len(events)+1)
-        
         # add the zipcode
         zips = pd.unique(df_pkg['zipcode'])
         zips = [x for x in zips if x != 0]
@@ -153,7 +149,7 @@ def compress(df_master):
         dataframe_list.append(pkg)
     
     # convert the 2D list into a dataframe
-    df = pd.DataFrame(dataframe_list, columns=['package_id', 'delivered', 'days', 'events', 'zipcode', \
+    df = pd.DataFrame(dataframe_list, columns=['package_id', 'delivered', 'days', 'zipcode', \
                                                   'provider', 'area',  \
                                                   'delays', 'failures','address', \
                                                   'resolution', \
