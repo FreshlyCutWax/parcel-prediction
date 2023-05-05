@@ -105,7 +105,8 @@ def compress(df_master):
         pkg.append(codes[1])
         
         # add number of delivery failures
-        pkg.append(codes[5])
+        failure = codes[5] + codes[7] + codes[9]
+        pkg.append(failure)
         
         # SKIP WAITING PACKAGE CODES
         # SKIP PROCESSING PACKAGE CODES
@@ -124,24 +125,6 @@ def compress(df_master):
         else:
             pkg.append(0)
             
-        # add if the package was ever missing
-        if codes[7] > 0:
-            pkg.append(True)
-        else:
-            pkg.append(False)
-            
-        # add if the the package was refused
-        if codes[8] > 0:
-            pkg.append(True)
-        else:
-            pkg.append(False)
-            
-        # add if the package ever needed inspection
-        if codes[9] > 0:
-            pkg.append(True)
-        else:
-            pkg.append(False)
-            
         # add if there were any resolutions to package issues
         if codes[3] > 0:
             pkg.append(True)
@@ -156,24 +139,15 @@ def compress(df_master):
             pkg_mean = round(np.mean(pd.unique(df.total_day_pkgs)))
         pkg.append(pkg_mean)
         
-        # add if there was rain or snow during package's life
-        precip = np.sum(df_pkg.precip)
+        # add total amount of precipitation during package's life
+        rain = np.sum(df_pkg.precip)
         snow = np.sum(df_pkg.snow)
-        if precip > 0 or snow > 0:
-            pkg.append(True)
-        else:
-            pkg.append(False)
+        precip = rain + snow
+        pkg.append(precip)
             
         # add the average temperature during the package's life
         temp = np.mean(pd.unique(df_pkg[df_pkg['temp'] != 0].temp))
         pkg.append(int(temp))
-        
-        # add if there was fog/fog-like weather during package's life
-        fog = np.sum(df_pkg.fog)
-        if fog > 0:
-            pkg.append(True)
-        else:
-            pkg.append(False)
         
         # append to compressed history list
         dataframe_list.append(pkg)
@@ -181,9 +155,9 @@ def compress(df_master):
     # convert the 2D list into a dataframe
     df = pd.DataFrame(dataframe_list, columns=['package_id', 'delivered', 'days', 'events', 'zipcode', \
                                                   'provider', 'area',  \
-                                                  'delays', 'failures','address', 'missing', \
-                                                  'refused', 'inspection', 'resolution', \
-                                                  'volume', 'precip', 'temp', 'fog'])
+                                                  'delays', 'failures','address', \
+                                                  'resolution', \
+                                                  'volume', 'precip', 'temp'])
     
     return df
 
