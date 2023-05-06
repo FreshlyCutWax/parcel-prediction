@@ -172,11 +172,14 @@ def add_package(df_master, df_package):
     df.insert(loc=len(df.columns), column='service', value=service_array)
     df.insert(loc=len(df.columns), column='signature', value=sig_array)
     
+    # insert the data
     for i in tqdm(df_master.itertuples()):
         df.at[i.Index, 'service'] = df_package[df_package['package_id'] == i.package_id].service.values[0]
         df.at[i.Index, 'signature'] = df_package[df_package['package_id'] == i.package_id].signature.values[0]
         
-        
+    # convert signature to boolean values
+    df['signature'] = df['signature'].apply(lambda x: True if x == 'Y' else False)
+                
     return df
     
     
@@ -283,6 +286,11 @@ def finalizer(df_master):
     zero_area = df[df['area'] == 0].index
     df = df.drop(zero_area)
     
+    # reorder columns
+    df = df[['package_id', 'delivered', 'service', 'signature', 'zipcode', \
+             'provider', 'area', 'days', 'delays', 'failures','address', \
+             'resolution', 'volume', 'precip', 'temp']]
+    
     # reset the index
     df = df.reset_index(drop=True)
     
@@ -332,7 +340,7 @@ def main():
     # initialize master dataframe
     print("Adding package history data...")
     df_master = df_history.copy()
-    print("Done.", end='\n\n')
+    print("Done.", end='\n\n')  
     
     # add aggregate data
     print("Adding aggregate data...")
@@ -347,6 +355,11 @@ def main():
     # compress the master dataframe
     print("Compressing master dataframe...")
     df_master = compress(df_master)
+    print("Done.", end='\n\n')
+    
+    # ADD YO PACKAGE DATA HERE PLEASEE!!11!!1!1!!1!!!!
+    print("Adding package data...")
+    df_master = add_package(df_master, df_package)
     print("Done.", end='\n\n')
     
     # finalize and last cleaning
