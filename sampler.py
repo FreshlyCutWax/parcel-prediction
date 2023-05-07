@@ -16,6 +16,9 @@ import warnings
 warnings.filterwarnings('ignore')
 
 
+# global
+min_max_columns = {}
+
 
 def transform(df_master):
     # make a copy for the new dataframe
@@ -111,6 +114,60 @@ def transform(df_master):
     
     
     return df
+    
+    
+
+
+def min_max(value, min_v, max_v):
+    norm_v = (value-min_v)/(max_v-min_v)
+    return norm_v
+
+
+
+
+    
+def min_max_reverse(norm_v, min_v, max_v):
+    value = norm_v*(max_v-min_v) + min_v
+    return value
+    
+    
+    
+    
+def normalize(df_original):
+    global min_max_columns
+
+    # make copy of original dataframe
+    df = df_original.copy()
+       
+    # apply min-max normalization across the columns
+    # save original min-max values to global dictionary
+    for c in df.columns[1:]:
+        max_v = np.max(df[c])
+        min_v = np.min(df[c])
+        min_max_columns[c] = [min_v, max_v]
+        
+        df[c] = df[c].apply(lambda x: min_max(x, min_v, max_v))
+        
+    return df
+        
+def reverse_normalize(df_original):
+    global min_max_columns
+    
+    # make copy of original dataframe
+    df = df_original.copy()
+    
+    # de-normalize values
+    for c in df.columns[1:]:
+        min_v = min_max_columns[c][0]
+        max_v = min_max_columns[c][1]
+        df[c] = df[c].apply(lambda x: min_max_reverse(x, min_v, max_v))
+        
+    # return to original values
+    for c in df.columns[:11]:
+        df[c] = df[c].round()
+        df[c] = df[c].astype('int')
+
+    return df
 
 
 def main():
@@ -141,8 +198,11 @@ def main():
     # transform/convert the values to numeric
     df_master = transform(df_master)
     
+    # normalize the values
+    df_master = normalize(df_master)
     
     print(df_master)
+    
     
 	
 	
