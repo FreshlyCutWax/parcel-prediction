@@ -235,6 +235,54 @@ def knn(samples, t, k):
     return n
     
     
+    
+    
+def smote(class_array, nn_x, sample_x):
+    # do SMOTE on our minority class!!
+    # lets make a copy of our samples for safety
+    samples = class_array.copy()
+    
+    # make a list to hold our new samples
+    gen_samples = []
+    
+    # generate index for sample array
+    index = np.arange(0, len(samples), 1, dtype='int')
+    
+    # build new samples for every minority sample
+    for i in tqdm(index):
+        # get the sample, remove from sample array
+        sample = samples[i]
+        knn_array = np.delete(samples, i, axis=0)
+        
+        # get the nearest neighbors and the index for them
+        # we are getting 3 nearest neighbors for our new samples
+        nn = knn(knn_array, sample, nn_x)
+        nn_index = list(nn.keys())
+        
+        # now lets make our new samples
+        for i in nn_index:
+            #generate 3 new samples per nearest neighbor
+            for j in range(sample_x):
+                # generate a random number between 0 and 1
+                gen = random.uniform(0, 1)
+                
+                # take the distance between attributes and multiply by our random distance
+                # generates a new sample
+                new_sample = []
+                for a in range(len(knn_array[i])):
+                    if sample[a] == knn_array[i][a]:
+                        new_sample.append(sample[a])
+                    else:
+                        new_att = abs(sample[a] - knn_array[i][a])
+                        new_att = new_att * gen
+                        new_sample.append(new_att)
+                
+                # append new generated sample to our new sample list
+                gen_samples.append(new_sample)
+            
+    return gen_samples
+    
+    
 
 
 def main():
