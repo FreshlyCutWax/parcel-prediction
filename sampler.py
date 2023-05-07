@@ -17,10 +17,20 @@ warnings.filterwarnings('ignore')
 
 
 # global
+service_enum = {}
+zip_enum = {}
+area_enum = {}
+provider_enum = {}
 min_max_columns = {}
 
 
 def transform(df_master):
+    global service_enum
+    global zip_enum
+    global area_enum
+    global provider_enum
+    
+
     # make a copy for the new dataframe
     df = df_master.copy()
 
@@ -112,6 +122,53 @@ def transform(df_master):
     df['delivered'] = df['delivered'].apply(lambda x: int(x))
     df['resolution'] = df['resolution'].apply(lambda x: int(x))
     
+    
+    return df
+    
+    
+
+
+def reverse_transform(df_original):
+    global service_enum
+    global zip_enum
+    global area_enum
+    global provider_enum
+    
+    # get a copy of the original dataframe
+    df = df_original.copy()
+    
+    
+    #----------------SERVICE------------------------->
+    # convert back to service labels
+    reverse_service_enum = {v: k for k, v in service_enum.items()}
+    df['service'] = df['service'].apply(lambda x: reverse_service_enum[x])
+    
+    #----------------SIGNATURE---------------------->
+    # convert from integer to boolean
+    df['signature'] = df['signature'].apply(lambda x: bool(x))
+    
+    #----------------ZIPCODE------------------------>
+    # convert back to zipcodes
+    reverse_zip_enum = {v: k for k, v in zip_enum.items()}
+    df['zipcode'] = df['zipcode'].apply(lambda x: reverse_zip_enum[x]) 
+    
+    #----------------AREA--------------------------->
+    # convert back to original area values
+    reverse_area_enum = {v: k for k, v in area_enum.items()}
+    reverse_area_enum[0] = 999
+    
+    df['area'] = df['area'].apply(lambda x: reverse_area_enum[x])
+    
+    # convert 0 to 999
+    df['area'] = df['area'].apply(lambda x: x if x != 0 else 999)
+    #----------------PROVIDER----------------------->
+    reverse_provider_enum = {v: k for k, v in provider_enum.items()}
+    df['provider'] = df['provider'].apply(lambda x: reverse_provider_enum[x])
+    
+    #------DELIVERED/RESOLUTION------------------->
+    # convert from integer to boolean
+    df['delivered'] = df['delivered'].apply(lambda x: bool(x))
+    df['resolution'] = df['resolution'].apply(lambda x: bool(x))
     
     return df
     
@@ -250,6 +307,9 @@ def knn(samples, t, k):
     
     
 def smote(class_array, nn_x, sample_x):
+    # nn_x: the k value for knn algorithm
+    # sample_x: how many samples to generate per k
+
     # do SMOTE on our minority class!!
     # lets make a copy of our samples for safety
     samples = class_array.copy()
@@ -295,6 +355,49 @@ def smote(class_array, nn_x, sample_x):
     return gen_samples
     
     
+    
+    
+def undersample(class_array, num_match, nn_x):
+    # num_match: number of samples from minority class
+    # nn_x: the k value for knn algorithm
+
+    # get copy of the class array
+    samples = class_array.copy()
+    
+    # generate index for sample array
+    index = np.arange(0, len(samples), 1, dtype='int')
+    
+    # get the difference in number of samples
+    diff = len(index) - num_match
+    
+    # get number of samples to find knn for removal
+    num_samples_remove = round(diff/nn_x)
+    
+    # get random samples to match with for removal
+    rand_match_index = []
+    for i in range(num_samples_remove):
+        rand_match_index.append(np.random.choice(index, replace=False))
+        
+    # for every randomly selected sample, use knn to find samples to remove
+    samples_removal = []
+    for i in tqdm(rand_match_index):
+        # get the sample, remove from sample array
+        sample = samples[i]
+        knn_array = np.delete(samples, i, axis=0)
+        
+        # get nearest neighbors
+        nn = knn(knn_array, sample, nn_x)
+        nn_index = list(nn.keys())
+        
+        # append sample index for removal
+        samples_removal[len(samples_removal):] = nn_index
+    
+    # remove the samples we don't want
+    samples = np.delete(samples, samples_removal, axis=0)
+            
+    return samples
+    
+    
 
 
 def main():
@@ -323,10 +426,14 @@ def main():
         
     
     # transform/convert the values to numeric
+    print("Converting data to numeric values...")
     df_master = transform(df_master)
+    print("Done", end='\n\n')
     
     # normalize the values
+    print("Applying min-max normalization...")
     df_master = normalize(df_master)
+    print("Done", end='\n\n')
     
     # separate the classes into two different dataframes
     df_d, df_n = separate_class(df_master)
@@ -336,7 +443,9 @@ def main():
     arr_n = df_to_array(df_n)
     
     # apply SMOTE to the minority class
+    print("Applying SMOTE to minority class...")
     arr_gen_n = smote(arr_n, 8, 2)
+    print("Done", end='\n\n')
     
     # turn the new samples into a dataframe
     df_gen_n = array_to_df(arr_gen_n)
@@ -344,10 +453,63 @@ def main():
     # add new sample dataframe with original samples
     df_n = pd.concat([df_n, df_gen_n], ignore_index=True)
     
+    # undersample the majority class
+    print("Undersampling majority class...")
+    arr_d = undersample(arr_d, len(df_n), 8)
+    print("Done", end='\n\n')
     
-    print(df_n)
+    # turn new undersampled majority class back into dataframe
+    df_d = array_to_df(arr_d)  
     
+    # ask user how many sets to create
+    while True:
+        print("How many sample sets would you like to create?")
+        num_sets = input(">: ")
+        print("\n\n")
+        
+        try:
+            num_sets = int(num_sets)
+            break
+        except:
+            print("Not a valid number.")
+            print("\n\n")
     
+    # check save path
+    path = 'samples/'
+    if not os.path.exists(path):
+        os.makedirs(path)
+    
+    # build the sets save them
+    print("Building sets...")
+    for i in range(num_sets):
+        # copy dataframes for safety
+        d_objs = df_d.copy()
+        n_objs = df_n.copy()
+        
+        sample_d = d_objs.sample(frac=0.5)
+        sample_n = n_objs.sample(frac=0.5)
+        
+        # normalized sample
+        sample = pd.concat([sample_d, sample_n])
+        sample = sample.sample(frac=1)
+        
+        sample_name = "norm_sample" + str(i)
+        sample.to_csv(path + sample_name + '.csv', index=False)
+        
+        # regular samples (with converted values)
+        sample = reverse_normalize(sample)
+        
+        sample_name = "regular_sample" + str(i)
+        sample.to_csv(path + sample_name + '.csv', index=False)
+        
+        # original non-converted samples
+        sample = reverse_transform(sample)
+        
+        sample_name = "original_sample" + str(i)
+        sample.to_csv(path + sample_name + '.csv', index=False)   
+        
+    print()
+    input("Done. Press enter to end...")
 	
 	
 if __name__ == "__main__":
