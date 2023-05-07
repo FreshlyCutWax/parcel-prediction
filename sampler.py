@@ -170,6 +170,30 @@ def reverse_normalize(df_original):
     return df
 
 
+
+def separate_class(df_master):
+    # get a copy of the original df
+    df = df_master.copy()
+    
+    # delivery class dataframe
+    df_d = df[df['delivered'] == 1]
+    
+    # no delivery class dataframe
+    df_n = df[df['delivered'] == 0]
+    
+    return df_d, df_n
+    
+    
+    
+    
+def df_to_array(df):
+    # convert to array
+    arr = df.to_numpy(dtype='float', copy=True)
+    return arr
+    
+    
+
+
 def main():
 	# check if path for weather data exists
     path = 'compiled/'
@@ -201,7 +225,15 @@ def main():
     # normalize the values
     df_master = normalize(df_master)
     
-    print(df_master)
+    # separate the classes into two different dataframes
+    df_d, df_n = separate_class(df_master)
+    
+    # convert to 2D arrays
+    arr_d = df_to_array(df_d)
+    arr_n = df_to_array(df_n)
+    
+    print(arr_d)
+    print(arr_n)
     
     
 	
