@@ -192,6 +192,49 @@ def df_to_array(df):
     return arr
     
     
+    
+    
+def distance(t1, t2):
+    # create an empty vector to hold the differences between attributes
+    vector = np.zeros(len(t1), dtype='float')
+    
+    # compute the squared difference between each attribute
+    for i in range(len(vector)):
+        vector[i] = (t1[i] - t2[i])**2
+        
+    # take the square root of the sum of the vector
+    dist = math.sqrt(np.sum(vector))
+    
+    return dist
+    
+    
+    
+
+def knn(samples, t, k):
+    # list to hold nearest neighbors
+    n = {}
+    
+    # loop over all data and find k nearest neighbors
+    for i in range(len(samples)):
+        if len(n) < k:
+            # add a new i to our nearest neighbors
+            n[i] = distance(t, samples[i])
+        else:
+            # get the distance between t and some i
+            dist_i = distance(t, samples[i])
+            
+            # get the i in n with that maximum distance
+            max_n = max(n, key=n.get)
+            
+            # if the distance is smaller than maximum distance in n, replace
+            if dist_i < n[max_n]:
+                del n[max_n]
+                n[i] = dist_i
+                
+    # we want the full list of knn
+    return n
+    
+    
 
 
 def main():
