@@ -194,6 +194,18 @@ def df_to_array(df):
     
     
     
+def array_to_df(arr):
+    # convert to dataframe
+    df = pd.DataFrame(arr, columns=['delivered', 'service', 'signature', 'zipcode', \
+                                    'provider', 'area', 'days', \
+                                    'delays', 'failures','address', \
+                                    'resolution', \
+                                    'volume', 'precip', 'temp'])
+    return df
+    
+    
+    
+    
 def distance(t1, t2):
     # create an empty vector to hold the differences between attributes
     vector = np.zeros(len(t1), dtype='float')
@@ -323,8 +335,17 @@ def main():
     arr_d = df_to_array(df_d)
     arr_n = df_to_array(df_n)
     
-    print(arr_d)
-    print(arr_n)
+    # apply SMOTE to the minority class
+    arr_gen_n = smote(arr_n, 8, 2)
+    
+    # turn the new samples into a dataframe
+    df_gen_n = array_to_df(arr_gen_n)
+    
+    # add new sample dataframe with original samples
+    df_n = pd.concat([df_n, df_gen_n], ignore_index=True)
+    
+    
+    print(df_n)
     
     
 	
