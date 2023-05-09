@@ -3,7 +3,7 @@
  
  Description: Implementation of the Naive-Bayes classifier method.
  
- Args: (number of samples) (split % as a decimal)
+ Args [required]: (number of samples) (split % as a decimal)
 """
 
 import pandas as pd
@@ -683,7 +683,9 @@ def main(args):
      
     # check if number of sample sets were passed
     if len(args) != 3:
-        print("Number of sample sets were not passed.")
+        print("Arguments are not set right.")
+        print("Run script as follows:")
+        print("python naive_bayes.py [number of samples] [split % as a decimal]")
         input("Press enter to continue...")
         sys.exit()
         
