@@ -296,7 +296,10 @@ def build_avc(train_sets):
     avc_sets = {}
     
     # build tables for every training set
-    for x in tqdm(range(len(train_sets))):
+    print("Building AVC tables...")
+    pbar = tqdm(range(len(train_sets)))
+    for x in pbar:
+        pbar.set_description("Model " + str(x))
         # get our sample set, divide into classes
         sample = train_sets[x]
         
@@ -388,6 +391,218 @@ def split(sample_list, p):
     return train_sets, test_samples
     
     
+    
+    
+def model_test(avc_sets, test_samples):
+    conf_matrices = {}
+    
+    for x in range(len(avc_sets)):
+        # get testing set and AVC tables
+        avc_tables = avc_sets[x]
+        
+        # create a confusion matrix for the set
+        conf_matrix = pd.DataFrame(index=[True, False], columns=[True, False])
+        conf_matrix = conf_matrix.fillna(0)
+        
+        print("Testing for Model:", x)
+        for obj in tqdm(test_samples.itertuples()):
+            # list to hold our probabilities
+            d_probs = []
+            n_probs = []
+            
+            # compute service probability
+            value = obj.service
+            
+            avc = avc_tables['service']
+            
+            prob_d = avc.loc[value, True]/avc[True].sum()
+            prob_n = avc.loc[value, False]/avc[False].sum()
+            
+            d_probs.append(prob_d)
+            n_probs.append(prob_n)
+            
+            # compute signature probability       
+            value = obj.signature
+            
+            avc = avc_tables['signature']
+            
+            prob_d = avc.loc[value, True]/avc[True].sum()
+            prob_n = avc.loc[value, False]/avc[False].sum()
+            
+            d_probs.append(prob_d)
+            n_probs.append(prob_n)
+            
+            # compute zipcode probability
+            value = obj.zipcode
+            
+            avc = avc_tables['zipcode']
+            
+            try:
+                prob_d = avc.loc[value, True]/avc[True].sum()
+                prob_n = avc.loc[value, False]/avc[False].sum()
+            except:
+                prob_d = 1
+                prob_n = 1
+                
+                d_probs.append(prob_d)
+                n_probs.append(prob_n)
+            
+            # compute provider probability
+            value = obj.provider
+            
+            avc = avc_tables['provider']
+            
+            prob_d = avc.loc[value, True]/avc[True].sum()
+            prob_n = avc.loc[value, False]/avc[False].sum()
+            
+            d_probs.append(prob_d)
+            n_probs.append(prob_n)
+            
+            # compute area probability
+            value = obj.area
+            
+            avc = avc_tables['area']
+            
+            try:
+                prob_d = avc.loc[value, True]/avc[True].sum()
+                prob_n = avc.loc[value, False]/avc[False].sum()
+            except:
+                prob_d = 1
+                prob_n = 1
+            
+            d_probs.append(prob_d)
+            n_probs.append(prob_n)
+            
+            # compute days probability
+            value = obj.days
+            if value > 4:
+                value = 4
+                
+            avc = avc_tables['days']
+            
+            prob_d = avc.loc[value, True]/avc[True].sum()
+            prob_n = avc.loc[value, False]/avc[False].sum()
+            
+            d_probs.append(prob_d)
+            n_probs.append(prob_n)
+            
+            # compute delays probability
+            value = obj.delays
+            if value > 3:
+                value = 3
+                
+            avc = avc_tables['delays']
+            
+            prob_d = avc.loc[value, True]/avc[True].sum()
+            prob_n = avc.loc[value, False]/avc[False].sum()
+            
+            d_probs.append(prob_d)
+            n_probs.append(prob_n)
+            
+            # compute failures probability
+            value = obj.failures
+            if value > 2:
+                value = 2
+                
+            avc = avc_tables['failures']
+            
+            prob_d = avc.loc[value, True]/avc[True].sum()
+            prob_n = avc.loc[value, False]/avc[False].sum()
+            
+            d_probs.append(prob_d)
+            n_probs.append(prob_n)
+            
+            # compute address probability
+            value = obj.address
+            
+            avc = avc_tables['address']
+            
+            prob_d = avc.loc[value, True]/avc[True].sum()
+            prob_n = avc.loc[value, False]/avc[False].sum()
+            
+            d_probs.append(prob_d)
+            n_probs.append(prob_n)
+            
+            # compute resolution probability
+            value = obj.resolution
+            
+            avc = avc_tables['resolution']
+            
+            prob_d = avc.loc[value, True]/avc[True].sum()
+            prob_n = avc.loc[value, False]/avc[False].sum()
+            
+            d_probs.append(prob_d)
+            n_probs.append(prob_n)
+            
+            # compute volume probability
+            value = obj.volume
+            if value < 20000:
+                value = '<20k'
+            elif value >= 20000 and value < 29999:
+                value = '20k-30k'
+            else:
+                value = '30k+'
+                
+            avc = avc_tables['volume']
+            
+            prob_d = avc.loc[value, True]/avc[True].sum()
+            prob_n = avc.loc[value, False]/avc[False].sum()
+            
+            d_probs.append(prob_d)
+            n_probs.append(prob_n)
+            
+            # compute precip probability
+            value = obj.precip
+            if value < 1.0:
+                value = '0'
+            elif value >= 1.0 and value < 3.0:
+                value = '1-3'
+            else:
+                value = '3+'
+                
+            avc = avc_tables['precip']
+            
+            prob_d = avc.loc[value, True]/avc[True].sum()
+            prob_n = avc.loc[value, False]/avc[False].sum()
+            
+            d_probs.append(prob_d)
+            n_probs.append(prob_n)
+            
+            # compute temp probability
+            value = obj.temp
+            if value < 30:
+                value = '<30'
+            elif value >= 30 and value < 50:
+                value = '30-50'
+            else:
+                value = '50+'
+                
+            avc = avc_tables['temp']
+            
+            prob_d = avc.loc[value, True]/avc[True].sum()
+            prob_n = avc.loc[value, False]/avc[False].sum()
+            
+            d_probs.append(prob_d)
+            n_probs.append(prob_n)
+            
+            # compute total probability for each class and compare
+            prob_d = np.prod(d_probs)
+            prob_n = np.prod(n_probs)
+            
+            # determine the class label
+            pred_class = False
+            if prob_d > prob_n:
+                pred_class = True
+                
+            # add prediction to the confusion matrix
+            conf_matrix.loc[obj.delivered, pred_class] += 1
+            
+        # once completed, save the confusion matrix to our dictionary
+        conf_matrices[x] = conf_matrix
+        
+    return conf_matrices
+    
+    
 
 
 def main(args):
@@ -444,7 +659,10 @@ def main(args):
     # build AVC tables for our training sets
     avc_sets = build_avc(train_sets)
     
-    print(avc_sets)
+    # test our different AVC sets with our testing samples
+    conf_matrices = model_test(avc_sets, test_samples)
+    
+    print(conf_matrices)
 
 
 if __name__ == "__main__":
