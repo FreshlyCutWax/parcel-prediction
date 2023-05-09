@@ -2,6 +2,8 @@
  Naive-Bayes
  
  Description: Implementation of the Naive-Bayes classifier method.
+ 
+ Args: (number of samples) (split % as a decimal)
 """
 
 import pandas as pd
@@ -601,6 +603,69 @@ def model_test(avc_sets, test_samples):
         conf_matrices[x] = conf_matrix
         
     return conf_matrices
+
+
+
+
+def results(conf_matrices, train_sets):
+    best_model = 0
+    best_score = 0
+    best_stats = []
+    for x in range(len(conf_matrices)):    
+        # get confusion matrix for the model
+        conf_matrix = conf_matrices[x]
+        
+        # get the training set for the model
+        train = train_sets[x]
+        
+        # get number of samples for each class
+        p = len(train[train['delivered'] == True])
+        n = len(train[train['delivered'] == False])
+        
+        # get classification metrics from confusion matrix
+        tp = conf_matrix.loc[True, True]
+        tn = conf_matrix.loc[False, False]
+        fn = conf_matrix.loc[True, False]
+        fp = conf_matrix.loc[False, True]
+        
+        # calculate skew
+        a = p/(p+n)
+        
+        # calculate recall (true positive rate)
+        r = tp/(tp+fn)
+        
+        # calculate precision
+        p = tp/(tp+fp)
+        
+        # calculate F1 score
+        f1 = (2*r*p)/(r+p)
+        
+        # calculate accuracy
+        acc = (tp+tn)/(tp+tn+fn+fp)
+        
+        # statistic voting
+        if len(best_stats) == 0:
+            best_model = x
+            best_stats = [a, r, p, f1, acc]
+            best_score = f1
+        else:
+            if f1 > best_score:
+                best_model = x
+                best_stats = [a, r, p, f1, acc]
+                best_score = f1
+        
+    # print results for best model
+    print("Best Model:", best_model)
+    print("----------------")
+    print('Recall:', round(best_stats[2], 3))
+    print('Precision:', round(best_stats[1], 3))
+    print('F1 Score:', round(best_stats[3], 3))
+    print('Accuracy:', round(best_stats[4], 3))
+    print('Skew:', round(best_stats[0], 3))
+    print()
+    print("Confusion Matrix:")
+    print(conf_matrices[best_model])
+    print('\n\n')
     
     
 
@@ -662,7 +727,8 @@ def main(args):
     # test our different AVC sets with our testing samples
     conf_matrices = model_test(avc_sets, test_samples)
     
-    print(conf_matrices)
+    # calculate and print results
+    results(conf_matrices, train_sets)
 
 
 if __name__ == "__main__":
