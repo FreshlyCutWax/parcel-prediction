@@ -1,13 +1,10 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score, confusion_matrix
+import os
+import sys
+import copy
 
 random_seed = 1
 
@@ -51,49 +48,58 @@ print("\n")  # Add a newline for clearer output
 print("Confusion Matrix: ")
 print(confusion_matrix(y_test, y_pred))
 
+
 def main(args):
     # check if path for weather data exists
     path = 'samples/'
     if not os.path.exists(path):
         os.makedirs(path)
         print("No sample directory found.")
-        print("Place generated sample sets in \'samples/\'.")
-        print("You may need to generate your samples first with sampler.py.")
+        print("Place generated sample sets in 'samples/'.")
         input("Press enter to continue...")
         sys.exit()
-     
-    # check if number of sample sets were passed
+
+    # check if number of sample sets and split percentage were passed
     if len(args) != 3:
         print("Arguments are not set right.")
         print("Run script as follows:")
-        print("python naive_bayes.py [number of samples] [split % as a decimal]")
+        print("python script_name.py [number of samples] [split % as a decimal]")
         input("Press enter to continue...")
         sys.exit()
-        
+
     # filenames to look for
-    filename = path + 'original_sampleX.csv'
-    
+    filename = path + 'norm_sampleX.csv'
+
     # number of sample sets
-    num_sets = int(args[1])
-    
-    # percentage of train/test split
-    split_percent = float(args[2])
-    
+    try:
+        num_sets = int(args[1])
+    except ValueError:
+        print("Invalid number of samples. Please provide a valid integer.")
+        sys.exit(1)
+
+    # split percentage
+    try:
+        split_percentage = float(args[2])
+    except ValueError:
+        print("Invalid split percentage. Please provide a valid decimal value.")
+        sys.exit(1)
+
     # list to contain all the sample sets
     sample_list = []
-    
-    
-    # load the sample sets if they exists
-    try:
-        for x in range(num_sets):
-            s = copy.deepcopy(filename)
-            s = s.replace('X', str(x))
+
+    # load the sample sets if they exist
+    for x in range(num_sets):
+        s = copy.deepcopy(filename)
+        s = s.replace('X', str(x))
+        try:
             sample_list.append(pd.read_csv(s))
-    except:
-        print("No data found.")
-        print("Place generated sample sets in \'samples/\'.")
-        input("Press enter to continue...")
-        sys.exit()
+        except FileNotFoundError:
+            print(f"Data not found for sample {x}. Please ensure all sample sets exist.")
+            sys.exit(1)
+
+# Call the main
+    if __name__ == '__main__':
+        main(sys.argv)
 
 
 
