@@ -49,6 +49,18 @@ warnings.filterwarnings('ignore')
 # -------------------------------------------------- FILE FUNCTIONS -------------------------------------->
 # -------------------------------------------------------------------------------------------------------->
 def check_path():
+    """
+    check_path() -> None
+    
+    args:
+    None
+    
+    returns:
+    None
+    
+    Desc:
+    Check the file path. Creates directories as needed.
+    """
     # get path values
     data_path = get_path('data')
     output_path = get_path('output')
@@ -69,6 +81,18 @@ def check_path():
 
 
 def capture_filenames():   
+    """
+    capture_filenames() -> None
+    
+    args:
+    None
+    
+    returns:
+    None
+    
+    Desc:
+    Get the data filenames from the data directory.
+    """
     # get the path for the data
     data_path = get_path('data')
     
@@ -86,7 +110,19 @@ def capture_filenames():
 
 
 
-def load_dataframes():    
+def load_dataframes():   
+    """
+    load_dataframes() -> success (bool)
+    
+    args:
+    None
+    
+    returns:
+    success (bool) -> if operation was successful
+    
+    Desc:
+    Load the dataframes from the pickle files.
+    """
     # get the output path
     output_path = get_path('output')
     
@@ -130,8 +166,6 @@ def load_dataframes():
     if os.path.isfile(path):
         df = pd.read_pickle(path)
         set_dataframe(df, 'merged')
-    else:
-        success = False
         
     # set empty if no success in getting dataframes
     if success == False:
@@ -147,6 +181,18 @@ def load_dataframes():
 
 
 def store_dataframes(): 
+    """
+    store_dataframes() -> success (bool)
+    
+    args:
+    None
+    
+    returns:
+    success (bool) -> if operation was successful
+    
+    Desc:
+    Store the loaded dataframes into a pickle file.
+    """
     # get the output path
     output_path = get_path('output')
     
@@ -206,6 +252,18 @@ def store_dataframes():
 
 
 def load_error_logs():
+    """
+    load_error_logs() -> success (bool)
+    
+    args:
+    None
+    
+    returns:
+    success (bool) -> if operation was successful
+    
+    Desc:
+    Loads the error logs from pickle files.
+    """
     # get our script directory
     script_path = get_path('script')
     
@@ -233,6 +291,18 @@ def load_error_logs():
     
     
 def store_error_logs():
+    """
+    store_error_logs() -> success (bool)
+    
+    args:
+    None
+    
+    returns:
+    success (bool) -> if operation was successful
+    
+    Desc:
+    Loads error logs from pickle files.
+    """
     # get our script directory
     script_path = get_path('script')
 
@@ -271,6 +341,19 @@ def store_error_logs():
 # ---------------------------------------------- MENU FUNTION -------------------------------------------->
 # -------------------------------------------------------------------------------------------------------->
 def menu(start_string, end_string):
+    """
+    menu() -> None
+    
+    args:
+    start_string (str) -> file starting date
+    end_string (str) -> file ending date
+    
+    returns:
+    None
+    
+    Desc:
+    The script main menu.
+    """
     # main menu creation
     main_menu = ConsoleMenu("Preprocessor", start_string + '\n' + end_string)
     
