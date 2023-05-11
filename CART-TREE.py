@@ -51,53 +51,6 @@ print("\n")  # Add a newline for clearer output
 print("Confusion Matrix: ")
 print(confusion_matrix(y_test, y_pred))
 
-import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score, confusion_matrix
-
-random_seed = 1
-
-# Load and sample the data
-df_list = []
-for i in range(10):
-    df_temp = pd.read_csv(f'norm_sample{i}.csv').sample(frac=0.1, random_state=random_seed)
-    df_list.append(df_temp)
-
-# Concatenate dataframes into a single dataframe
-df = pd.concat(df_list)
-
-# Let's assume that the last column is the target variable
-X = df.iloc[:, :-1]
-y = df.iloc[:, -1]
-
-# Convert continuous target variable into two categories
-y = pd.cut(y, bins=2, labels=[0, 1])
-
-# Split the data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=random_seed)
-
-# Initialize the DecisionTreeClassifier (CART)
-clf = DecisionTreeClassifier(random_state=random_seed)
-
-# Fit the model
-clf.fit(X_train, y_train)
-
-# Predict the labels
-y_pred = clf.predict(X_test)
-
-# Calculate and print the metrics
-print("Precision: ", precision_score(y_test, y_pred, average='weighted'))
-print("Recall: ", recall_score(y_test, y_pred, average='weighted'))
-print("F1 Score: ", f1_score(y_test, y_pred, average='weighted'))
-print("Accuracy: ", accuracy_score(y_test, y_pred))
-
-print("\n")  # Add a newline for clearer output
-
-# Print confusion matrix
-print("Confusion Matrix: ")
-print(confusion_matrix(y_test, y_pred))
-
 def main(args):
     # check if path for weather data exists
     path = 'samples/'
