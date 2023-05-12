@@ -49,10 +49,6 @@ def compress(df_master):
         dates = pd.unique(df_pkg['date'])
         pkg.append(len(dates))
         
-        # add how many events happened to the package
-        events = df_pkg[(df_pkg['station_code'] != 0) | (df_pkg['driver_code'] != 0)]
-        pkg.append(len(events)+1)
-        
         # add the zipcode
         zips = pd.unique(df_pkg['zipcode'])
         zips = [x for x in zips if x != 0]
@@ -105,7 +101,8 @@ def compress(df_master):
         pkg.append(codes[1])
         
         # add number of delivery failures
-        pkg.append(codes[5])
+        failure = codes[5] + codes[7] + codes[9]
+        pkg.append(failure)
         
         # SKIP WAITING PACKAGE CODES
         # SKIP PROCESSING PACKAGE CODES
@@ -124,24 +121,6 @@ def compress(df_master):
         else:
             pkg.append(0)
             
-        # add if the package was ever missing
-        if codes[7] > 0:
-            pkg.append(True)
-        else:
-            pkg.append(False)
-            
-        # add if the the package was refused
-        if codes[8] > 0:
-            pkg.append(True)
-        else:
-            pkg.append(False)
-            
-        # add if the package ever needed inspection
-        if codes[9] > 0:
-            pkg.append(True)
-        else:
-            pkg.append(False)
-            
         # add if there were any resolutions to package issues
         if codes[3] > 0:
             pkg.append(True)
@@ -156,34 +135,25 @@ def compress(df_master):
             pkg_mean = round(np.mean(pd.unique(df.total_day_pkgs)))
         pkg.append(pkg_mean)
         
-        # add if there was rain or snow during package's life
-        precip = np.sum(df_pkg.precip)
+        # add total amount of precipitation during package's life
+        rain = np.sum(df_pkg.precip)
         snow = np.sum(df_pkg.snow)
-        if precip > 0 or snow > 0:
-            pkg.append(True)
-        else:
-            pkg.append(False)
+        precip = rain + snow
+        pkg.append(precip)
             
         # add the average temperature during the package's life
         temp = np.mean(pd.unique(df_pkg[df_pkg['temp'] != 0].temp))
         pkg.append(int(temp))
         
-        # add if there was fog/fog-like weather during package's life
-        fog = np.sum(df_pkg.fog)
-        if fog > 0:
-            pkg.append(True)
-        else:
-            pkg.append(False)
-        
         # append to compressed history list
         dataframe_list.append(pkg)
     
     # convert the 2D list into a dataframe
-    df = pd.DataFrame(dataframe_list, columns=['package_id', 'delivered', 'days', 'events', 'zipcode', \
+    df = pd.DataFrame(dataframe_list, columns=['package_id', 'delivered', 'days', 'zipcode', \
                                                   'provider', 'area',  \
-                                                  'delays', 'failures','address', 'missing', \
-                                                  'refused', 'inspection', 'resolution', \
-                                                  'volume', 'precip', 'temp', 'fog'])
+                                                  'delays', 'failures','address', \
+                                                  'resolution', \
+                                                  'volume', 'precip', 'temp'])
     
     return df
 
@@ -202,11 +172,14 @@ def add_package(df_master, df_package):
     df.insert(loc=len(df.columns), column='service', value=service_array)
     df.insert(loc=len(df.columns), column='signature', value=sig_array)
     
+    # insert the data
     for i in tqdm(df_master.itertuples()):
         df.at[i.Index, 'service'] = df_package[df_package['package_id'] == i.package_id].service.values[0]
         df.at[i.Index, 'signature'] = df_package[df_package['package_id'] == i.package_id].signature.values[0]
         
-        
+    # convert signature to boolean values
+    df['signature'] = df['signature'].apply(lambda x: True if x == 'Y' else False)
+                
     return df
     
     
@@ -313,6 +286,11 @@ def finalizer(df_master):
     zero_area = df[df['area'] == 0].index
     df = df.drop(zero_area)
     
+    # reorder columns
+    df = df[['package_id', 'delivered', 'service', 'signature', 'zipcode', \
+             'provider', 'area', 'days', 'delays', 'failures','address', \
+             'resolution', 'volume', 'precip', 'temp']]
+    
     # reset the index
     df = df.reset_index(drop=True)
     
@@ -362,7 +340,7 @@ def main():
     # initialize master dataframe
     print("Adding package history data...")
     df_master = df_history.copy()
-    print("Done.", end='\n\n')
+    print("Done.", end='\n\n')  
     
     # add aggregate data
     print("Adding aggregate data...")
@@ -379,6 +357,11 @@ def main():
     df_master = compress(df_master)
     print("Done.", end='\n\n')
     
+    # ADD YO PACKAGE DATA HERE PLEASEE!!11!!1!1!!1!!!!
+    print("Adding package data...")
+    df_master = add_package(df_master, df_package)
+    print("Done.", end='\n\n')
+    
     # finalize and last cleaning
     print("Finalizing master dataframe...")
     df_master = finalizer(df_master)
@@ -390,7 +373,7 @@ def main():
       
     # save the master dataframe
     df_master.to_pickle(path + 'df_master.pkl')
-    df_master.to_csv(path + 'package_data.csv')
+    df_master.to_csv(path + 'package_data.csv', index=False)
     
     # print success on completion
     print("MASTER DATAFRAME:")
